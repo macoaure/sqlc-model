@@ -1,0 +1,57 @@
+site_name: sqlc-gen-richmodel
+site_description: Eloquent-inspired rich models generated over sqlc
+repo_name: sqlc-gen-richmodel
+
+theme:
+  name: material
+
+nav:
+  - Home: README.md
+  - Documentation: docs/index.md
+  - Tutorials:
+      - Overview: docs/tutorials/index.md
+      - First model: docs/tutorials/first-model.md
+      - First relation: docs/tutorials/first-relation.md
+      - First transaction: docs/tutorials/first-transaction.md
+  - How-to guides:
+      - Overview: docs/how-to/index.md
+      - Configure a model: docs/how-to/configure-a-model.md
+      - Add fluent behavior: docs/how-to/add-fluent-behavior.md
+      - Handle validation: docs/how-to/handle-validation.md
+      - Configure relations: docs/how-to/configure-relations.md
+      - Define relation scopes: docs/how-to/define-relation-scopes.md
+      - Eager-load relations: docs/how-to/eager-load-relations.md
+      - Use transactions: docs/how-to/use-transactions.md
+      - Use value objects: docs/how-to/use-value-objects.md
+      - Test generated models: docs/how-to/test-generated-models.md
+  - Reference:
+      - Overview: docs/reference/index.md
+      - Configuration: docs/reference/configuration.md
+      - Generated files: docs/reference/generated-files.md
+      - Session API: docs/reference/session-api.md
+      - Model API: docs/reference/model-api.md
+      - Collection API: docs/reference/collection-api.md
+      - Relation API: docs/reference/relation-api.md
+      - Lifecycle: docs/reference/lifecycle.md
+      - Query contracts: docs/reference/query-contracts.md
+      - Errors: docs/reference/errors.md
+      - Compatibility: docs/reference/compatibility.md
+      - Diagnostics: docs/reference/generation-diagnostics.md
+  - Explanation:
+      - Overview: docs/explanation/index.md
+      - Architecture: docs/explanation/architecture.md
+      - Active Record over sqlc: docs/explanation/active-record-over-sqlc.md
+      - Package boundaries: docs/explanation/package-boundaries.md
+      - Query composition: docs/explanation/query-composition.md
+      - Lazy and eager loading: docs/explanation/lazy-and-eager-loading.md
+      - Model state: docs/explanation/model-state.md
+      - Transactions and sessions: docs/explanation/transactions-and-sessions.md
+      - Rejected alternatives: docs/explanation/rejected-alternatives.md
+  - Project:
+      - Overview: docs/project/index.md
+      - Roadmap: docs/project/implementation-roadmap.md
+      - Initial release: docs/project/initial-release-boundary.md
+      - Definition of done: docs/project/definition-of-done.md
+      - Risk register: docs/project/risk-register.md
+  - Glossary: docs/glossary.md
+  - References: docs/references.md

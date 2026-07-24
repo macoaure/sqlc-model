@@ -1,0 +1,51 @@
+# Archive manifest
+
+Total files: 48
+
+- `.markdownlint.json`
+- `README.md`
+- `SUMMARY.md`
+- `docs/explanation/active-record-over-sqlc.md`
+- `docs/explanation/architecture.md`
+- `docs/explanation/index.md`
+- `docs/explanation/lazy-and-eager-loading.md`
+- `docs/explanation/model-state.md`
+- `docs/explanation/package-boundaries.md`
+- `docs/explanation/query-composition.md`
+- `docs/explanation/rejected-alternatives.md`
+- `docs/explanation/transactions-and-sessions.md`
+- `docs/glossary.md`
+- `docs/how-to/add-fluent-behavior.md`
+- `docs/how-to/configure-a-model.md`
+- `docs/how-to/configure-relations.md`
+- `docs/how-to/define-relation-scopes.md`
+- `docs/how-to/eager-load-relations.md`
+- `docs/how-to/handle-validation.md`
+- `docs/how-to/index.md`
+- `docs/how-to/test-generated-models.md`
+- `docs/how-to/use-transactions.md`
+- `docs/how-to/use-value-objects.md`
+- `docs/index.md`
+- `docs/project/definition-of-done.md`
+- `docs/project/implementation-roadmap.md`
+- `docs/project/index.md`
+- `docs/project/initial-release-boundary.md`
+- `docs/project/risk-register.md`
+- `docs/reference/collection-api.md`
+- `docs/reference/compatibility.md`
+- `docs/reference/configuration.md`
+- `docs/reference/errors.md`
+- `docs/reference/generated-files.md`
+- `docs/reference/generation-diagnostics.md`
+- `docs/reference/index.md`
+- `docs/reference/lifecycle.md`
+- `docs/reference/model-api.md`
+- `docs/reference/query-contracts.md`
+- `docs/reference/relation-api.md`
+- `docs/reference/session-api.md`
+- `docs/references.md`
+- `docs/tutorials/first-model.md`
+- `docs/tutorials/first-relation.md`
+- `docs/tutorials/first-transaction.md`
+- `docs/tutorials/index.md`
+- `mkdocs.yml`
