@@ -1,34 +1,38 @@
-# sqlc-gen-richmodel documentation
+# sqlc-gen-richmodel
 
-`sqlc-gen-richmodel` is an Eloquent-inspired rich model layer generated over sqlc. sqlc remains the source of truth for SQL, query signatures, parameter types, result types, and driver integration. The rich-model generator adds mutable model objects, lifecycle state, fluent behavior, relations, validation, dirty tracking, transactions, and model-oriented persistence APIs.
+[![CI](https://github.com/macoaure/sqlc-gen-richmodel/actions/workflows/ci.yml/badge.svg)](https://github.com/macoaure/sqlc-gen-richmodel/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/macoaure/sqlc-gen-richmodel)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/macoaure/sqlc-gen-richmodel)](https://github.com/macoaure/sqlc-gen-richmodel/releases)
+[![Go Reference](https://pkg.go.dev/badge/github.com/macoaure/sqlc-gen-richmodel.svg)](https://pkg.go.dev/github.com/macoaure/sqlc-gen-richmodel)
 
-This archive contains the proposed product and implementation documentation organized with the Diátaxis framework.
+`sqlc-gen-richmodel` is an Eloquent-inspired rich model layer generated over [sqlc](https://sqlc.dev). sqlc remains the source of truth for SQL, query signatures, parameter types, and result types; this plugin adds mutable model objects, lifecycle state, dirty tracking, relations, validation, and model-oriented persistence APIs on top of it — no dynamic queries, no ORM magic, just generated code.
 
-## Documentation areas
+## Install
 
-- [Tutorials](docs/tutorials/index.md) teach the system through complete, guided examples.
-- [How-to guides](docs/how-to/index.md) solve specific implementation and application tasks.
-- [Reference](docs/reference/index.md) defines exact configuration, API, lifecycle, query, and compatibility contracts.
-- [Explanation](docs/explanation/index.md) records the architectural reasoning and rejected alternatives.
-- [Project implementation](docs/project/index.md) defines the delivery plan, release boundary, and definition of done.
+Add the plugin to your `sqlc.yaml`:
 
-Start with [Documentation index](docs/index.md).
+```yaml
+plugins:
+  - name: richmodel
+    process:
+      cmd: sqlc-gen-richmodel
 
-## Project definition
-
-> `sqlc-gen-richmodel` generates fluent Active Record models, typed relationships, lifecycle state, and persistence adapters over statically declared sqlc queries.
-
-The public abstraction consists of sessions, collections, models, relations, typed scopes, and terminal persistence operations. The persistence foundation consists of explicit SQL, sqlc query analysis, sqlc-generated Go types, and transaction-bound sqlc query objects.
-
-## Core boundary
-
-```text
-The rich-model layer owns model behavior and lifecycle.
-
-sqlc owns SQL contracts and database access.
+sql:
+  - schema: schema.sql
+    queries: query.sql
+    engine: postgresql
+    codegen:
+      - plugin: richmodel
+        out: internal/models
 ```
 
-## Intended API
+Then install the plugin binary:
+
+```sh
+go install github.com/macoaure/sqlc-gen-richmodel/cmd/sqlc-gen-richmodel@latest
+```
+
+## Usage
 
 ```go
 models := content.New(pool)
@@ -38,22 +42,20 @@ if err != nil {
     return err
 }
 
-err = user.
-    Rename("Marcos Aurelio").
-    ChangeEmail("marcos@example.com").
-    Activate().
-    Save(ctx)
+user.SetName("Ada Lovelace")
+if err := user.Save(ctx); err != nil {
+    return err
+}
 ```
 
-Relations use explicit terminal operations:
+## Status
 
-```go
-posts, err := user.
-    Posts().
-    Published().
-    Latest().
-    Limit(10).
-    Get(ctx)
-```
+This project is under active development. See [specs/](specs/) for the specifications driving implementation.
 
-Calling `Posts()` or a scope method does not execute SQL. `Get(ctx)` is the operation boundary that may perform lazy loading.
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to set up a development environment, run tests, and submit changes.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
