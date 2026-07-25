@@ -110,9 +110,7 @@ func (u *{{.Row}}) DirtyFields() []{{.Row}}Field {
 	return out
 }
 
-// Err aggregates every current field error via errors.Join; nil if there
-// are none.
-func (u *{{.Row}}) Err() error {
+func (u *{{.Row}}) fieldErr() error {
 	if len(u.errs) == 0 {
 		return nil
 	}
@@ -125,8 +123,21 @@ func (u *{{.Row}}) Err() error {
 	return errors.Join(errs...)
 }
 
-// HasErrors reports whether {{.Row}} has any current field error.
-func (u *{{.Row}}) HasErrors() bool { return len(u.errs) > 0 }
+// Err aggregates every current validation error; nil if there are none.
+func (u *{{.Row}}) Err() error { return u.Validate() }
+
+// Validate combines current field errors with any handwritten cross-field
+// validation hook declared in {{.Row}}'s extension file.
+func (u *{{.Row}}) Validate() error {
+	var custom error
+	if v, ok := any(u).(interface{ validate{{.Row}}() error }); ok {
+		custom = v.validate{{.Row}}()
+	}
+	return errors.Join(u.fieldErr(), custom)
+}
+
+// HasErrors reports whether {{.Row}} has any current validation error.
+func (u *{{.Row}}) HasErrors() bool { return u.Validate() != nil }
 
 // FieldError returns f's current error, or nil.
 func (u *{{.Row}}) FieldError(f {{.Row}}Field) error { return u.errs[f] }
@@ -177,8 +188,8 @@ func (u *{{.Row}}) Save(ctx context.Context) error {
 	if !u.IsAttached() {
 		return ErrDetachedModel
 	}
-	if u.HasErrors() {
-		return u.Err()
+	if err := u.Validate(); err != nil {
+		return err
 	}
 	switch {
 	case u.state == modelStateNew:

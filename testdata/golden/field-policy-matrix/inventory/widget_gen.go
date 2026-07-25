@@ -187,9 +187,7 @@ func (u *Widget) DirtyFields() []WidgetField {
 	return out
 }
 
-// Err aggregates every current field error via errors.Join; nil if there
-// are none.
-func (u *Widget) Err() error {
+func (u *Widget) fieldErr() error {
 	if len(u.errs) == 0 {
 		return nil
 	}
@@ -202,8 +200,21 @@ func (u *Widget) Err() error {
 	return errors.Join(errs...)
 }
 
-// HasErrors reports whether Widget has any current field error.
-func (u *Widget) HasErrors() bool { return len(u.errs) > 0 }
+// Err aggregates every current validation error; nil if there are none.
+func (u *Widget) Err() error { return u.Validate() }
+
+// Validate combines current field errors with any handwritten cross-field
+// validation hook declared in Widget's extension file.
+func (u *Widget) Validate() error {
+	var custom error
+	if v, ok := any(u).(interface{ validateWidget() error }); ok {
+		custom = v.validateWidget()
+	}
+	return errors.Join(u.fieldErr(), custom)
+}
+
+// HasErrors reports whether Widget has any current validation error.
+func (u *Widget) HasErrors() bool { return u.Validate() != nil }
 
 // FieldError returns f's current error, or nil.
 func (u *Widget) FieldError(f WidgetField) error { return u.errs[f] }
@@ -254,8 +265,8 @@ func (u *Widget) Save(ctx context.Context) error {
 	if !u.IsAttached() {
 		return ErrDetachedModel
 	}
-	if u.HasErrors() {
-		return u.Err()
+	if err := u.Validate(); err != nil {
+		return err
 	}
 	switch {
 	case u.state == modelStateNew:

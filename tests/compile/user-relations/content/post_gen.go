@@ -102,9 +102,7 @@ func (u *Post) DirtyFields() []PostField {
 	return out
 }
 
-// Err aggregates every current field error via errors.Join; nil if there
-// are none.
-func (u *Post) Err() error {
+func (u *Post) fieldErr() error {
 	if len(u.errs) == 0 {
 		return nil
 	}
@@ -117,8 +115,21 @@ func (u *Post) Err() error {
 	return errors.Join(errs...)
 }
 
-// HasErrors reports whether Post has any current field error.
-func (u *Post) HasErrors() bool { return len(u.errs) > 0 }
+// Err aggregates every current validation error; nil if there are none.
+func (u *Post) Err() error { return u.Validate() }
+
+// Validate combines current field errors with any handwritten cross-field
+// validation hook declared in Post's extension file.
+func (u *Post) Validate() error {
+	var custom error
+	if v, ok := any(u).(interface{ validatePost() error }); ok {
+		custom = v.validatePost()
+	}
+	return errors.Join(u.fieldErr(), custom)
+}
+
+// HasErrors reports whether Post has any current validation error.
+func (u *Post) HasErrors() bool { return u.Validate() != nil }
 
 // FieldError returns f's current error, or nil.
 func (u *Post) FieldError(f PostField) error { return u.errs[f] }
@@ -169,8 +180,8 @@ func (u *Post) Save(ctx context.Context) error {
 	if !u.IsAttached() {
 		return ErrDetachedModel
 	}
-	if u.HasErrors() {
-		return u.Err()
+	if err := u.Validate(); err != nil {
+		return err
 	}
 	switch {
 	case u.state == modelStateNew:

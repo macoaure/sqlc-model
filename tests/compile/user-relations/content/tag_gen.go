@@ -83,9 +83,7 @@ func (u *Tag) DirtyFields() []TagField {
 	return out
 }
 
-// Err aggregates every current field error via errors.Join; nil if there
-// are none.
-func (u *Tag) Err() error {
+func (u *Tag) fieldErr() error {
 	if len(u.errs) == 0 {
 		return nil
 	}
@@ -98,8 +96,21 @@ func (u *Tag) Err() error {
 	return errors.Join(errs...)
 }
 
-// HasErrors reports whether Tag has any current field error.
-func (u *Tag) HasErrors() bool { return len(u.errs) > 0 }
+// Err aggregates every current validation error; nil if there are none.
+func (u *Tag) Err() error { return u.Validate() }
+
+// Validate combines current field errors with any handwritten cross-field
+// validation hook declared in Tag's extension file.
+func (u *Tag) Validate() error {
+	var custom error
+	if v, ok := any(u).(interface{ validateTag() error }); ok {
+		custom = v.validateTag()
+	}
+	return errors.Join(u.fieldErr(), custom)
+}
+
+// HasErrors reports whether Tag has any current validation error.
+func (u *Tag) HasErrors() bool { return u.Validate() != nil }
 
 // FieldError returns f's current error, or nil.
 func (u *Tag) FieldError(f TagField) error { return u.errs[f] }
@@ -150,8 +161,8 @@ func (u *Tag) Save(ctx context.Context) error {
 	if !u.IsAttached() {
 		return ErrDetachedModel
 	}
-	if u.HasErrors() {
-		return u.Err()
+	if err := u.Validate(); err != nil {
+		return err
 	}
 	switch {
 	case u.state == modelStateNew:
