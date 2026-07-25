@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read
-specs/005-value-object-columns/plan.md
+specs/006-query-composition/plan.md
 <!-- SPECKIT END -->
