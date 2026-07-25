@@ -29,8 +29,8 @@ fields:
   email:
     value_object:
       type: Email
-      from_sqlc: ParseEmail
-      to_sqlc: String
+      constructor: ParseEmail
+      accessor: String
 ```
 
 ## Generated hydration
@@ -38,14 +38,14 @@ fields:
 ```go
 email, err := ParseEmail(row.Email)
 if err != nil {
-    return nil, fmt.Errorf("hydrate User.email: %w", err)
+    return nil, fmt.Errorf("User.Email: %w", err)
 }
 ```
 
 ## Generated persistence conversion
 
 ```go
-params.Email = user.email.String()
+arg := user.Email().String()
 ```
 
 ## Avoid implicit wrapper assumptions
