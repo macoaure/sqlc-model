@@ -202,10 +202,39 @@ func (u *Widget) fieldErr() error {
 	var errs []error
 	for f := WidgetField(0); f < WidgetFieldCount; f++ {
 		if err, ok := u.errs[f]; ok {
-			errs = append(errs, err)
+			errs = append(errs, u.validationError(f, err))
 		}
 	}
 	return errors.Join(errs...)
+}
+
+func (u *Widget) validationError(f WidgetField, err error) error {
+	switch f {
+	case WidgetFieldID:
+		return ValidationError{Model: "Widget", Field: "id", Err: err}
+	case WidgetFieldVersionNo:
+		return ValidationError{Model: "Widget", Field: "version_no", Err: err}
+	case WidgetFieldReadonlyField:
+		return ValidationError{Model: "Widget", Field: "readonly_field", Err: err}
+	case WidgetFieldFillableField:
+		return ValidationError{Model: "Widget", Field: "fillable_field", Err: err}
+	case WidgetFieldMutableField:
+		return ValidationError{Model: "Widget", Field: "mutable_field", Err: err}
+	case WidgetFieldFillableAndMutable:
+		return ValidationError{Model: "Widget", Field: "fillable_and_mutable", Err: err}
+	case WidgetFieldGeneratedInsertField:
+		return ValidationError{Model: "Widget", Field: "generated_insert_field", Err: err}
+	case WidgetFieldGeneratedSaveField:
+		return ValidationError{Model: "Widget", Field: "generated_save_field", Err: err}
+	case WidgetFieldSensitiveField:
+		return ValidationError{Model: "Widget", Field: "sensitive_field", Err: err}
+	case WidgetFieldExplicitMapped:
+		return ValidationError{Model: "Widget", Field: "explicit_mapped", Err: err}
+	case WidgetFieldImmutableField:
+		return ValidationError{Model: "Widget", Field: "immutable_field", Err: err}
+	default:
+		return ValidationError{Model: "Widget", Field: fmt.Sprint(f), Err: err}
+	}
 }
 
 // Err aggregates every current validation error; nil if there are none.

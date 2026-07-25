@@ -28,7 +28,7 @@ func (s *postStore) find(ctx context.Context, rec postRecord) (postRecord, error
 		if errors.Is(err, pgx.ErrNoRows) {
 			return postRecord{}, ErrNotFound
 		}
-		return postRecord{}, err
+		return postRecord{}, classifyDatabaseError(err)
 	}
 	return out, nil
 }
@@ -40,7 +40,7 @@ func (s *postStore) insert(ctx context.Context, rec postRecord) (postRecord, err
 		if errors.Is(err, pgx.ErrNoRows) {
 			return postRecord{}, ErrNotFound
 		}
-		return postRecord{}, err
+		return postRecord{}, classifyDatabaseError(err)
 	}
 	return out, nil
 }

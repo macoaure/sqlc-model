@@ -28,7 +28,7 @@ func (s *widgetStore) find(ctx context.Context, rec widgetRecord) (widgetRecord,
 		if errors.Is(err, pgx.ErrNoRows) {
 			return widgetRecord{}, ErrNotFound
 		}
-		return widgetRecord{}, err
+		return widgetRecord{}, classifyDatabaseError(err)
 	}
 	return out, nil
 }
@@ -40,7 +40,7 @@ func (s *widgetStore) insert(ctx context.Context, rec widgetRecord) (widgetRecor
 		if errors.Is(err, pgx.ErrNoRows) {
 			return widgetRecord{}, ErrNotFound
 		}
-		return widgetRecord{}, err
+		return widgetRecord{}, classifyDatabaseError(err)
 	}
 	return out, nil
 }
@@ -52,7 +52,7 @@ func (s *widgetStore) update(ctx context.Context, rec widgetRecord) (widgetRecor
 		if errors.Is(err, pgx.ErrNoRows) {
 			return widgetRecord{}, ErrNotFound
 		}
-		return widgetRecord{}, err
+		return widgetRecord{}, classifyDatabaseError(err)
 	}
 	return out, nil
 }
@@ -60,7 +60,7 @@ func (s *widgetStore) update(ctx context.Context, rec widgetRecord) (widgetRecor
 func (s *widgetStore) delete(ctx context.Context, rec widgetRecord) (int64, error) {
 	tag, err := s.executor.Exec(ctx, "DELETE FROM widgets WHERE id = $1;", rec.ID)
 	if err != nil {
-		return 0, err
+		return 0, classifyDatabaseError(err)
 	}
 	return tag.RowsAffected(), nil
 }
@@ -72,7 +72,7 @@ func (s *widgetStore) refresh(ctx context.Context, rec widgetRecord) (widgetReco
 		if errors.Is(err, pgx.ErrNoRows) {
 			return widgetRecord{}, ErrNotFound
 		}
-		return widgetRecord{}, err
+		return widgetRecord{}, classifyDatabaseError(err)
 	}
 	return out, nil
 }

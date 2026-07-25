@@ -28,7 +28,7 @@ func (s *userStore) find(ctx context.Context, rec userRecord) (userRecord, error
 		if errors.Is(err, pgx.ErrNoRows) {
 			return userRecord{}, ErrNotFound
 		}
-		return userRecord{}, err
+		return userRecord{}, classifyDatabaseError(err)
 	}
 	return out, nil
 }
@@ -40,7 +40,7 @@ func (s *userStore) insert(ctx context.Context, rec userRecord) (userRecord, err
 		if errors.Is(err, pgx.ErrNoRows) {
 			return userRecord{}, ErrNotFound
 		}
-		return userRecord{}, err
+		return userRecord{}, classifyDatabaseError(err)
 	}
 	return out, nil
 }
@@ -52,7 +52,7 @@ func (s *userStore) update(ctx context.Context, rec userRecord) (userRecord, err
 		if errors.Is(err, pgx.ErrNoRows) {
 			return userRecord{}, ErrNotFound
 		}
-		return userRecord{}, err
+		return userRecord{}, classifyDatabaseError(err)
 	}
 	return out, nil
 }
@@ -60,7 +60,7 @@ func (s *userStore) update(ctx context.Context, rec userRecord) (userRecord, err
 func (s *userStore) delete(ctx context.Context, rec userRecord) (int64, error) {
 	tag, err := s.executor.Exec(ctx, "DELETE FROM users WHERE id = $1;", rec.ID)
 	if err != nil {
-		return 0, err
+		return 0, classifyDatabaseError(err)
 	}
 	return tag.RowsAffected(), nil
 }
@@ -72,7 +72,7 @@ func (s *userStore) refresh(ctx context.Context, rec userRecord) (userRecord, er
 		if errors.Is(err, pgx.ErrNoRows) {
 			return userRecord{}, ErrNotFound
 		}
-		return userRecord{}, err
+		return userRecord{}, classifyDatabaseError(err)
 	}
 	return out, nil
 }

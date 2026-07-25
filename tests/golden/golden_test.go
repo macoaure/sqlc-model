@@ -72,7 +72,8 @@ func TestTransactionSessionAPI(t *testing.T) {
 		"_ = tx.Rollback(ctx)",
 		"tx.Commit(ctx)",
 		"ErrSessionMismatch = errors.New(\"richmodel: related model belongs to a different session\")",
-		"ErrUnsavedRelated = errors.New(\"richmodel: related model has no persisted identifier\")",
+		"ErrUnsavedRelatedModel = errors.New(\"richmodel: related model has no persisted identifier\")",
+		"ErrUnsavedRelated = ErrUnsavedRelatedModel",
 	} {
 		if !strings.Contains(session, want) {
 			t.Fatalf("expected generated session to contain %q:\n%s", want, session)

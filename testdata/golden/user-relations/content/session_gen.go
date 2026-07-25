@@ -131,6 +131,12 @@ var (
 	// ErrModelNotPersisted is returned by operations that require a
 	// persisted backing row on a new model.
 	ErrModelNotPersisted = errors.New("richmodel: model is not persisted")
+	// ErrInvalidModelState is returned when generated model state is
+	// internally inconsistent.
+	ErrInvalidModelState = errors.New("richmodel: invalid model state")
+	// ErrUnsupportedQueryContract is returned when a generated method has
+	// no compatible configured sqlc query contract.
+	ErrUnsupportedQueryContract = errors.New("richmodel: unsupported query contract")
 	// ErrDeletedModel is kept for compatibility; use ErrModelDeleted.
 	ErrDeletedModel = ErrModelDeleted
 	// ErrDetachedModel is kept for compatibility; use ErrModelDetached.
@@ -149,14 +155,98 @@ var (
 	// ErrSessionMismatch is returned by Associate/Attach/Sync when the
 	// related model belongs to a different session than the parent.
 	ErrSessionMismatch = errors.New("richmodel: related model belongs to a different session")
-	// ErrUnsavedRelated is returned by Associate/Attach/Sync when the
+	// ErrUnsavedRelatedModel is returned by Associate/Attach/Sync when the
 	// related model has no persisted identifier (IsNew()).
-	ErrUnsavedRelated = errors.New("richmodel: related model has no persisted identifier")
+	ErrUnsavedRelatedModel = errors.New("richmodel: related model has no persisted identifier")
+	// ErrUnsavedRelated is kept for compatibility; use ErrUnsavedRelatedModel.
+	ErrUnsavedRelated = ErrUnsavedRelatedModel
 	// ErrLazyLoadingPrevented is returned by a relation's Get/Reload when
 	// the session's LazyLoadingMode is LazyLoadingPrevented and the
 	// relation is not already cached or eager-loaded.
 	ErrLazyLoadingPrevented = errors.New("richmodel: lazy loading of an uncached relation is prevented")
 )
+
+// DatabaseErrorKind classifies PostgreSQL/pgx errors returned by generated
+// persistence methods.
+type DatabaseErrorKind uint8
+
+const (
+	DatabaseErrorUnknown DatabaseErrorKind = iota
+	DatabaseErrorUniqueViolation
+	DatabaseErrorForeignKeyViolation
+	DatabaseErrorNotNullViolation
+	DatabaseErrorCheckViolation
+	DatabaseErrorSerializationFailure
+	DatabaseErrorDeadlock
+)
+
+// DatabaseError wraps a driver error while preserving its cause.
+type DatabaseError struct {
+	Kind DatabaseErrorKind
+	Err  error
+}
+
+func (e *DatabaseError) Error() string {
+	if e == nil || e.Err == nil {
+		return "richmodel: database error"
+	}
+	return e.Err.Error()
+}
+
+func (e *DatabaseError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Err
+}
+
+func classifyDatabaseError(err error) error {
+	if err == nil {
+		return nil
+	}
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		return &DatabaseError{Kind: DatabaseErrorUnknown, Err: err}
+	}
+	return &DatabaseError{Kind: databaseErrorKind(pgErr.Code), Err: err}
+}
+
+func databaseErrorKind(code string) DatabaseErrorKind {
+	switch code {
+	case "23505":
+		return DatabaseErrorUniqueViolation
+	case "23503":
+		return DatabaseErrorForeignKeyViolation
+	case "23502":
+		return DatabaseErrorNotNullViolation
+	case "23514":
+		return DatabaseErrorCheckViolation
+	case "40001":
+		return DatabaseErrorSerializationFailure
+	case "40P01":
+		return DatabaseErrorDeadlock
+	default:
+		return DatabaseErrorUnknown
+	}
+}
+
+// ValidationError identifies one current field-level validation failure.
+type ValidationError struct {
+	Model string
+	Field string
+	Err   error
+}
+
+func (e ValidationError) Error() string {
+	if e.Err == nil {
+		return e.Model + "." + e.Field
+	}
+	return e.Model + "." + e.Field + ": " + e.Err.Error()
+}
+
+func (e ValidationError) Unwrap() error {
+	return e.Err
+}
 
 // cloneScopeValues copies src so a relation builder's scope methods can
 // chain new values without mutating the receiver or any other builder
