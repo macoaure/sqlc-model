@@ -86,11 +86,12 @@ func Resolve(fp config.FieldPolicy, columns []*pb.Column, path, context, model s
 		var diags []diagnostics.Diagnostic
 		if gt.Unmapped {
 			diags = append(diags, diagnostics.Diagnostic{
-				Severity: diagnostics.SeverityWarning,
+				Severity: diagnostics.SeverityError,
 				Path:     path,
 				Context:  context,
 				Model:    model,
-				Message:  fmt.Sprintf("field %q: column type %q has no specific Go type mapping, falling back to string", fp.Name, typeName(col)),
+				Message:  fmt.Sprintf("field %q: column type %q has no supported Go type mapping", fp.Name, typeName(col)),
+				Hint:     "use a supported PostgreSQL type or configure a custom type override",
 			})
 		}
 		return ResolvedField{

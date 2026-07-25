@@ -2,8 +2,9 @@
 
 ## Included
 
+- Go 1.25.0 module baseline.
+- sqlc configuration version 2 and the pinned tested sqlc release range published before stable release.
 - PostgreSQL and pgx/v5.
-- sqlc configuration version 2.
 - One or more independent bounded-context packages.
 - Single-column primary keys.
 - UUID, integer, and application-assigned identifiers within tested mappings.

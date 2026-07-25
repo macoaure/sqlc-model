@@ -152,18 +152,18 @@ func TestResolve_ColumnIdentityFallsBackToName(t *testing.T) {
 	}
 }
 
-func TestResolve_UnmappedColumnEmitsWarningWithTypeName(t *testing.T) {
+func TestResolve_UnmappedColumnEmitsErrorWithTypeName(t *testing.T) {
 	cols := []*pb.Column{mcol("x", "x", "some_exotic_type", true)}
 	fp := config.FieldPolicy{Name: "x", Readable: true}
 	_, diags := mapping.Resolve(fp, cols, "path", "ctx", "Model")
-	if diagnostics.HasError(diags) {
-		t.Fatalf("unexpected errors: %+v", diags)
-	}
-	if len(diags) != 1 || diags[0].Severity != diagnostics.SeverityWarning {
-		t.Fatalf("expected a single warning diagnostic, got %+v", diags)
+	if len(diags) != 1 || diags[0].Severity != diagnostics.SeverityError {
+		t.Fatalf("expected a single error diagnostic, got %+v", diags)
 	}
 	if !strings.Contains(diags[0].Message, "some_exotic_type") {
-		t.Fatalf("expected warning message to include the type name, got %q", diags[0].Message)
+		t.Fatalf("expected error message to include the type name, got %q", diags[0].Message)
+	}
+	if !strings.Contains(diags[0].Hint, "supported PostgreSQL type") {
+		t.Fatalf("expected remediation hint, got %q", diags[0].Hint)
 	}
 }
 
@@ -171,11 +171,11 @@ func TestResolve_UnmappedColumnWithNilTypeUsesUnknown(t *testing.T) {
 	col := &pb.Column{Name: "x", OriginalName: "x", NotNull: true, Type: nil}
 	fp := config.FieldPolicy{Name: "x", Readable: true}
 	_, diags := mapping.Resolve(fp, []*pb.Column{col}, "path", "ctx", "Model")
-	if len(diags) != 1 || diags[0].Severity != diagnostics.SeverityWarning {
-		t.Fatalf("expected a single warning diagnostic, got %+v", diags)
+	if len(diags) != 1 || diags[0].Severity != diagnostics.SeverityError {
+		t.Fatalf("expected a single error diagnostic, got %+v", diags)
 	}
 	if !strings.Contains(diags[0].Message, "<unknown>") {
-		t.Fatalf("expected warning message to include <unknown> for nil type, got %q", diags[0].Message)
+		t.Fatalf("expected error message to include <unknown> for nil type, got %q", diags[0].Message)
 	}
 }
 

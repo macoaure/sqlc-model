@@ -5,7 +5,7 @@
 The proposed first stable release targets:
 
 ```text
-Go 1.24 or later
+Go 1.25.0 module baseline
 sqlc plugin protocol compatible with the selected sqlc 1.31 baseline
 PostgreSQL
 pgx/v5
