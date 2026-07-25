@@ -211,6 +211,61 @@ func TestRenderModel_ValueObjectUsesExposedType(t *testing.T) {
 	}
 }
 
+func TestRenderModel_LifecycleAPISurface(t *testing.T) {
+	ctx := plan.ResolvedContext{Name: "content", Package: "content", Directory: "content"}
+	m := plan.ResolvedModel{
+		Name: "User",
+		Row:  "User",
+		Fields: []plan.ResolvedField{
+			{
+				ResolvedField: mapping.ResolvedField{
+					Name: "id", GoField: "ID", ColumnName: "id",
+					GoType: mapping.GoType{Expr: "int64"}, NotNull: true,
+				},
+				Policy: config.FieldPolicy{Name: "id", Readable: true},
+			},
+			{
+				ResolvedField: mapping.ResolvedField{
+					Name: "name", GoField: "Name", ColumnName: "name",
+					GoType: mapping.GoType{Expr: "string"}, NotNull: true,
+				},
+				Policy: config.FieldPolicy{Name: "name", Readable: true, Fillable: true, Mutable: true},
+			},
+		},
+	}
+
+	model, diags := codegen.RenderModel(ctx, m)
+	if diagnostics.HasError(diags) {
+		t.Fatalf("unexpected errors: %+v", diags)
+	}
+	session, diags := codegen.RenderSession(plan.ResolvedContext{
+		Name:      "content",
+		Package:   "content",
+		Directory: "content",
+		Models:    []plan.ResolvedModel{m},
+	})
+	if diagnostics.HasError(diags) {
+		t.Fatalf("unexpected errors: %+v", diags)
+	}
+
+	src := string(model) + "\n" + string(session)
+	for _, want := range []string{
+		"func (u *User) IsPersisted() bool",
+		"func (u *User) IsDetached() bool",
+		"func (u *User) HasChanges() bool",
+		"ErrModelDetached = errors.New(\"richmodel: model is not attached to a session\")",
+		"ErrModelDeleted = errors.New(\"richmodel: model is deleted\")",
+		"ErrModelNotPersisted = errors.New(\"richmodel: model is not persisted\")",
+		"return ErrModelDeleted",
+		"return ErrModelDetached",
+		"return ErrModelNotPersisted",
+	} {
+		if !strings.Contains(src, want) {
+			t.Fatalf("expected generated lifecycle API to contain %q:\n%s", want, src)
+		}
+	}
+}
+
 func TestRenderStore_ValueObjectConvertsAtBoundaries(t *testing.T) {
 	field := &plan.ResolvedField{
 		ResolvedField: mapping.ResolvedField{
