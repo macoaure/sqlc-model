@@ -3,8 +3,6 @@ package content
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // userStore executes User's configured sqlc queries directly via
@@ -13,16 +11,16 @@ import (
 // query.Text verbatim as its query constant) — the query itself remains
 // sqlc's statically-verified output; this adapter only executes it.
 type userStore struct {
-	pool *pgxpool.Pool
+	executor richmodelExecutor
 }
 
-func newUserStore(pool *pgxpool.Pool) *userStore {
-	return &userStore{pool: pool}
+func newUserStore(executor richmodelExecutor) *userStore {
+	return &userStore{executor: executor}
 }
 
 func (s *userStore) find(ctx context.Context, rec userRecord) (userRecord, error) {
 	var out userRecord
-	row := s.pool.QueryRow(ctx, "SELECT id, name FROM users WHERE id = $1;", rec.ID)
+	row := s.executor.QueryRow(ctx, "SELECT id, name FROM users WHERE id = $1;", rec.ID)
 	if err := row.Scan(&out.ID, &out.Name); err != nil {
 		return userRecord{}, err
 	}
@@ -31,7 +29,7 @@ func (s *userStore) find(ctx context.Context, rec userRecord) (userRecord, error
 
 func (s *userStore) insert(ctx context.Context, rec userRecord) (userRecord, error) {
 	var out userRecord
-	row := s.pool.QueryRow(ctx, "INSERT INTO users (name) VALUES ($1) RETURNING id, name;", rec.Name)
+	row := s.executor.QueryRow(ctx, "INSERT INTO users (name) VALUES ($1) RETURNING id, name;", rec.Name)
 	if err := row.Scan(&out.ID, &out.Name); err != nil {
 		return userRecord{}, err
 	}

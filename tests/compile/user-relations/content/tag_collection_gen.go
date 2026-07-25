@@ -5,7 +5,6 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // TagCollection constructs and finds Tag instances, attached to
@@ -15,8 +14,8 @@ type TagCollection struct {
 	store   *tagStore
 }
 
-func newTagCollection(sess *Session, pool *pgxpool.Pool) *TagCollection {
-	return &TagCollection{session: sess, store: newTagStore(pool)}
+func newTagCollection(sess *Session) *TagCollection {
+	return &TagCollection{session: sess, store: newTagStore(sess.executor)}
 }
 
 // New constructs a new, unpersisted Tag attached to this collection.

@@ -3,8 +3,6 @@ package content
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // userStore executes User's configured sqlc queries directly via
@@ -13,16 +11,16 @@ import (
 // query.Text verbatim as its query constant) — the query itself remains
 // sqlc's statically-verified output; this adapter only executes it.
 type userStore struct {
-	pool *pgxpool.Pool
+	executor richmodelExecutor
 }
 
-func newUserStore(pool *pgxpool.Pool) *userStore {
-	return &userStore{pool: pool}
+func newUserStore(executor richmodelExecutor) *userStore {
+	return &userStore{executor: executor}
 }
 
 func (s *userStore) find(ctx context.Context, rec userRecord) (userRecord, error) {
 	var out userRecord
-	row := s.pool.QueryRow(ctx, "SELECT id, name, email, active, created_at, updated_at FROM users WHERE id = $1;", rec.ID)
+	row := s.executor.QueryRow(ctx, "SELECT id, name, email, active, created_at, updated_at FROM users WHERE id = $1;", rec.ID)
 	if err := row.Scan(&out.ID, &out.Name, &out.Email, &out.Active, &out.CreatedAt, &out.UpdatedAt); err != nil {
 		return userRecord{}, err
 	}
@@ -31,7 +29,7 @@ func (s *userStore) find(ctx context.Context, rec userRecord) (userRecord, error
 
 func (s *userStore) insert(ctx context.Context, rec userRecord) (userRecord, error) {
 	var out userRecord
-	row := s.pool.QueryRow(ctx, "INSERT INTO users (name, email, active) VALUES ($1, $2, $3) RETURNING id, name, email, active, created_at, updated_at;", rec.Name, rec.Email, rec.Active)
+	row := s.executor.QueryRow(ctx, "INSERT INTO users (name, email, active) VALUES ($1, $2, $3) RETURNING id, name, email, active, created_at, updated_at;", rec.Name, rec.Email, rec.Active)
 	if err := row.Scan(&out.ID, &out.Name, &out.Email, &out.Active, &out.CreatedAt, &out.UpdatedAt); err != nil {
 		return userRecord{}, err
 	}
@@ -40,7 +38,7 @@ func (s *userStore) insert(ctx context.Context, rec userRecord) (userRecord, err
 
 func (s *userStore) update(ctx context.Context, rec userRecord) (userRecord, error) {
 	var out userRecord
-	row := s.pool.QueryRow(ctx, "UPDATE users SET name = $1, email = $2, active = $3, updated_at = NOW() WHERE id = $4 RETURNING id, name, email, active, created_at, updated_at;", rec.Name, rec.Email, rec.Active, rec.ID)
+	row := s.executor.QueryRow(ctx, "UPDATE users SET name = $1, email = $2, active = $3, updated_at = NOW() WHERE id = $4 RETURNING id, name, email, active, created_at, updated_at;", rec.Name, rec.Email, rec.Active, rec.ID)
 	if err := row.Scan(&out.ID, &out.Name, &out.Email, &out.Active, &out.CreatedAt, &out.UpdatedAt); err != nil {
 		return userRecord{}, err
 	}
@@ -48,7 +46,7 @@ func (s *userStore) update(ctx context.Context, rec userRecord) (userRecord, err
 }
 
 func (s *userStore) delete(ctx context.Context, rec userRecord) (int64, error) {
-	tag, err := s.pool.Exec(ctx, "DELETE FROM users WHERE id = $1;", rec.ID)
+	tag, err := s.executor.Exec(ctx, "DELETE FROM users WHERE id = $1;", rec.ID)
 	if err != nil {
 		return 0, err
 	}
@@ -57,7 +55,7 @@ func (s *userStore) delete(ctx context.Context, rec userRecord) (int64, error) {
 
 func (s *userStore) refresh(ctx context.Context, rec userRecord) (userRecord, error) {
 	var out userRecord
-	row := s.pool.QueryRow(ctx, "SELECT id, name, email, active, created_at, updated_at FROM users WHERE id = $1;", rec.ID)
+	row := s.executor.QueryRow(ctx, "SELECT id, name, email, active, created_at, updated_at FROM users WHERE id = $1;", rec.ID)
 	if err := row.Scan(&out.ID, &out.Name, &out.Email, &out.Active, &out.CreatedAt, &out.UpdatedAt); err != nil {
 		return userRecord{}, err
 	}

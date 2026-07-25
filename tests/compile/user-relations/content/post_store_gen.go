@@ -3,8 +3,6 @@ package content
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // postStore executes Post's configured sqlc queries directly via
@@ -13,16 +11,16 @@ import (
 // query.Text verbatim as its query constant) — the query itself remains
 // sqlc's statically-verified output; this adapter only executes it.
 type postStore struct {
-	pool *pgxpool.Pool
+	executor richmodelExecutor
 }
 
-func newPostStore(pool *pgxpool.Pool) *postStore {
-	return &postStore{pool: pool}
+func newPostStore(executor richmodelExecutor) *postStore {
+	return &postStore{executor: executor}
 }
 
 func (s *postStore) find(ctx context.Context, rec postRecord) (postRecord, error) {
 	var out postRecord
-	row := s.pool.QueryRow(ctx, "SELECT id, user_id, title FROM posts WHERE id = $1;", rec.ID)
+	row := s.executor.QueryRow(ctx, "SELECT id, user_id, title FROM posts WHERE id = $1;", rec.ID)
 	if err := row.Scan(&out.ID, &out.UserID, &out.Title); err != nil {
 		return postRecord{}, err
 	}
@@ -31,7 +29,7 @@ func (s *postStore) find(ctx context.Context, rec postRecord) (postRecord, error
 
 func (s *postStore) insert(ctx context.Context, rec postRecord) (postRecord, error) {
 	var out postRecord
-	row := s.pool.QueryRow(ctx, "INSERT INTO posts (user_id, title) VALUES ($1, $2) RETURNING id, user_id, title;", rec.UserID, rec.Title)
+	row := s.executor.QueryRow(ctx, "INSERT INTO posts (user_id, title) VALUES ($1, $2) RETURNING id, user_id, title;", rec.UserID, rec.Title)
 	if err := row.Scan(&out.ID, &out.UserID, &out.Title); err != nil {
 		return postRecord{}, err
 	}

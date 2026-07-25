@@ -32,7 +32,7 @@ func (r PostTagsRelation) isScoped() bool {
 func (r PostTagsRelation) exec(ctx context.Context) ([]*Tag, error) {
 	sqlText := "SELECT tags.id, tags.name FROM tags INNER JOIN post_tags ON post_tags.tag_id = tags.id WHERE post_tags.post_id = $1;"
 
-	rows, err := r.parent.coll.session.pool.Query(ctx, sqlText, r.parent.current.ID)
+	rows, err := r.parent.coll.session.executor.Query(ctx, sqlText, r.parent.current.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -128,12 +128,12 @@ func (r PostTagsRelation) Attach(ctx context.Context, targets ...*Tag) error {
 		if t.IsNew() {
 			return ErrUnsavedRelated
 		}
-		if r.parent.coll == nil || t.coll == nil || r.parent.coll.session != t.coll.session {
+		if r.parent.coll == nil || t.coll == nil || !sameSessionIdentity(r.parent.coll.session, t.coll.session) {
 			return ErrSessionMismatch
 		}
 	}
 	for _, t := range targets {
-		if _, err := r.parent.coll.session.pool.Exec(ctx, "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2);", r.parent.current.ID, t.current.ID); err != nil {
+		if _, err := r.parent.coll.session.executor.Exec(ctx, "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2);", r.parent.current.ID, t.current.ID); err != nil {
 			return err
 		}
 	}
@@ -144,7 +144,7 @@ func (r PostTagsRelation) Attach(ctx context.Context, targets ...*Tag) error {
 // (FR-008).
 func (r PostTagsRelation) Detach(ctx context.Context, targets ...*Tag) error {
 	for _, t := range targets {
-		if _, err := r.parent.coll.session.pool.Exec(ctx, "DELETE FROM post_tags WHERE post_id = $1 AND tag_id = $2;", r.parent.current.ID, t.current.ID); err != nil {
+		if _, err := r.parent.coll.session.executor.Exec(ctx, "DELETE FROM post_tags WHERE post_id = $1 AND tag_id = $2;", r.parent.current.ID, t.current.ID); err != nil {
 			return err
 		}
 	}
@@ -161,12 +161,12 @@ func (r PostTagsRelation) Sync(ctx context.Context, targets ...*Tag) error {
 		if t.IsNew() {
 			return ErrUnsavedRelated
 		}
-		if r.parent.coll == nil || t.coll == nil || r.parent.coll.session != t.coll.session {
+		if r.parent.coll == nil || t.coll == nil || !sameSessionIdentity(r.parent.coll.session, t.coll.session) {
 			return ErrSessionMismatch
 		}
 	}
 
-	rows, err := r.parent.coll.session.pool.Query(ctx, "SELECT tag_id FROM post_tags WHERE post_id = $1;", r.parent.current.ID)
+	rows, err := r.parent.coll.session.executor.Query(ctx, "SELECT tag_id FROM post_tags WHERE post_id = $1;", r.parent.current.ID)
 	if err != nil {
 		return err
 	}
@@ -192,14 +192,14 @@ func (r PostTagsRelation) Sync(ctx context.Context, targets ...*Tag) error {
 
 	for id := range current {
 		if !desired[id] {
-			if _, err := r.parent.coll.session.pool.Exec(ctx, "DELETE FROM post_tags WHERE post_id = $1 AND tag_id = $2;", r.parent.current.ID, id); err != nil {
+			if _, err := r.parent.coll.session.executor.Exec(ctx, "DELETE FROM post_tags WHERE post_id = $1 AND tag_id = $2;", r.parent.current.ID, id); err != nil {
 				return err
 			}
 		}
 	}
 	for id := range desired {
 		if !current[id] {
-			if _, err := r.parent.coll.session.pool.Exec(ctx, "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2);", r.parent.current.ID, id); err != nil {
+			if _, err := r.parent.coll.session.executor.Exec(ctx, "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2);", r.parent.current.ID, id); err != nil {
 				return err
 			}
 		}

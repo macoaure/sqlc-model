@@ -3,8 +3,6 @@ package content
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // tagStore executes Tag's configured sqlc queries directly via
@@ -13,16 +11,16 @@ import (
 // query.Text verbatim as its query constant) — the query itself remains
 // sqlc's statically-verified output; this adapter only executes it.
 type tagStore struct {
-	pool *pgxpool.Pool
+	executor richmodelExecutor
 }
 
-func newTagStore(pool *pgxpool.Pool) *tagStore {
-	return &tagStore{pool: pool}
+func newTagStore(executor richmodelExecutor) *tagStore {
+	return &tagStore{executor: executor}
 }
 
 func (s *tagStore) find(ctx context.Context, rec tagRecord) (tagRecord, error) {
 	var out tagRecord
-	row := s.pool.QueryRow(ctx, "SELECT id, name FROM tags WHERE id = $1;", rec.ID)
+	row := s.executor.QueryRow(ctx, "SELECT id, name FROM tags WHERE id = $1;", rec.ID)
 	if err := row.Scan(&out.ID, &out.Name); err != nil {
 		return tagRecord{}, err
 	}
@@ -31,7 +29,7 @@ func (s *tagStore) find(ctx context.Context, rec tagRecord) (tagRecord, error) {
 
 func (s *tagStore) insert(ctx context.Context, rec tagRecord) (tagRecord, error) {
 	var out tagRecord
-	row := s.pool.QueryRow(ctx, "INSERT INTO tags (name) VALUES ($1) RETURNING id, name;", rec.Name)
+	row := s.executor.QueryRow(ctx, "INSERT INTO tags (name) VALUES ($1) RETURNING id, name;", rec.Name)
 	if err := row.Scan(&out.ID, &out.Name); err != nil {
 		return tagRecord{}, err
 	}

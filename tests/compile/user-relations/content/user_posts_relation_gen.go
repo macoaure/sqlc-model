@@ -30,7 +30,7 @@ func (r UserPostsRelation) isScoped() bool {
 func (r UserPostsRelation) exec(ctx context.Context) ([]*Post, error) {
 	sqlText := "SELECT id, user_id, title FROM posts WHERE user_id = $1 AND (published = $2 OR $2 IS NULL);"
 
-	rows, err := r.parent.coll.session.pool.Query(ctx, sqlText, r.parent.current.ID, relationScopeArg(r.scopeValues, "published", nil))
+	rows, err := r.parent.coll.session.executor.Query(ctx, sqlText, r.parent.current.ID, relationScopeArg(r.scopeValues, "published", nil))
 	if err != nil {
 		return nil, err
 	}

@@ -67,7 +67,7 @@ func (c *UserCollection) eagerLoadPosts(ctx context.Context, parents []*User, ne
 		byKey[key] = append(byKey[key], parent)
 	}
 
-	rows, err := c.session.pool.Query(ctx, "SELECT id, user_id, title FROM posts WHERE user_id = ANY($1);", keys)
+	rows, err := c.session.executor.Query(ctx, "SELECT id, user_id, title FROM posts WHERE user_id = ANY($1);", keys)
 	if err != nil {
 		return err
 	}
