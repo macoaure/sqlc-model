@@ -253,9 +253,13 @@ func TestRenderModel_LifecycleAPISurface(t *testing.T) {
 		"func (u *User) IsPersisted() bool",
 		"func (u *User) IsDetached() bool",
 		"func (u *User) HasChanges() bool",
+		"type ValidationError struct",
+		`return ValidationError{Model: "User", Field: "name", Err: err}`,
 		"ErrModelDetached = errors.New(\"richmodel: model is not attached to a session\")",
 		"ErrModelDeleted = errors.New(\"richmodel: model is deleted\")",
 		"ErrModelNotPersisted = errors.New(\"richmodel: model is not persisted\")",
+		"ErrInvalidModelState = errors.New(\"richmodel: invalid model state\")",
+		"ErrUnsupportedQueryContract = errors.New(\"richmodel: unsupported query contract\")",
 		"return ErrModelDeleted",
 		"return ErrModelDetached",
 		"return ErrModelNotPersisted",
@@ -336,6 +340,7 @@ func TestRenderStore_MapsNoRowsToErrNotFound(t *testing.T) {
 	for _, want := range []string{
 		`errors.Is(err, pgx.ErrNoRows)`,
 		"return userRecord{}, ErrNotFound",
+		"return userRecord{}, classifyDatabaseError(err)",
 	} {
 		if !strings.Contains(src, want) {
 			t.Fatalf("expected generated store to contain %q:\n%s", want, src)

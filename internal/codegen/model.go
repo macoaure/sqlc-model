@@ -125,10 +125,21 @@ func (u *{{.Row}}) fieldErr() error {
 	var errs []error
 	for f := {{.Row}}Field(0); f < {{.Row}}FieldCount; f++ {
 		if err, ok := u.errs[f]; ok {
-			errs = append(errs, err)
+			errs = append(errs, u.validationError(f, err))
 		}
 	}
 	return errors.Join(errs...)
+}
+
+func (u *{{.Row}}) validationError(f {{.Row}}Field, err error) error {
+	switch f {
+{{- range .Fields}}
+	case {{$row}}Field{{.GoField}}:
+		return ValidationError{Model: "{{$.Row}}", Field: "{{.Name}}", Err: err}
+{{- end}}
+	default:
+		return ValidationError{Model: "{{.Row}}", Field: fmt.Sprint(f), Err: err}
+	}
 }
 
 // Err aggregates every current validation error; nil if there are none.
@@ -303,6 +314,7 @@ func (u *{{.Row}}) String() string {
 `
 
 type modelFieldData struct {
+	Name        string
 	GoField     string
 	GoType      string
 	Readable    bool
@@ -360,6 +372,7 @@ func RenderModel(ctx plan.ResolvedContext, m plan.ResolvedModel) ([]byte, []diag
 			data.NeedsSlices = true
 		}
 		data.Fields = append(data.Fields, modelFieldData{
+			Name:        f.Name,
 			GoField:     f.GoField,
 			GoType:      f.GoType.Expr,
 			Readable:    f.Policy.Readable,

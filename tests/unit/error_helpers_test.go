@@ -4,6 +4,10 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/macoaure/sqlc-gen-richmodel/internal/codegen"
+	"github.com/macoaure/sqlc-gen-richmodel/internal/diagnostics"
+	"github.com/macoaure/sqlc-gen-richmodel/internal/plan"
 )
 
 // errsAssignmentPattern matches any assignment/mutation of the model's
@@ -58,4 +62,49 @@ func splitFuncs(src string) []string {
 		funcs = append(funcs, strings.Join(current, "\n"))
 	}
 	return funcs
+}
+
+func TestGeneratedSession_DatabaseErrorContract(t *testing.T) {
+	src := generateSessionSource(t, false)
+	for _, want := range []string{
+		"type DatabaseErrorKind uint8",
+		"DatabaseErrorUniqueViolation",
+		"DatabaseErrorForeignKeyViolation",
+		"DatabaseErrorNotNullViolation",
+		"DatabaseErrorCheckViolation",
+		"DatabaseErrorSerializationFailure",
+		"DatabaseErrorDeadlock",
+		"type DatabaseError struct",
+		"func (e *DatabaseError) Unwrap() error",
+		"func classifyDatabaseError(err error) error",
+		`case "23505":`,
+		`case "23503":`,
+		`case "23502":`,
+		`case "23514":`,
+		`case "40001":`,
+		`case "40P01":`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Fatalf("expected generated session to contain %q:\n%s", want, src)
+		}
+	}
+
+}
+
+func generateSessionSource(t *testing.T, hasRelations bool) string {
+	t.Helper()
+	ctx := plan.ResolvedContext{
+		Name:      "content",
+		Package:   "content",
+		Directory: "content",
+		Models:    []plan.ResolvedModel{{Name: "User", Row: "User"}},
+	}
+	if hasRelations {
+		ctx.Models[0].Relations = []plan.ResolvedRelation{{Name: "Posts"}}
+	}
+	out, diags := codegen.RenderSession(ctx)
+	if diagnostics.HasError(diags) {
+		t.Fatalf("unexpected diagnostics: %+v", diags)
+	}
+	return string(out)
 }

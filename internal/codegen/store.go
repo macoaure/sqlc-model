@@ -51,7 +51,7 @@ func (s *{{$.StoreType}}) {{.Method}}(ctx context.Context, rec {{$.RecordType}})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return {{$.RecordType}}{}, ErrNotFound
 		}
-		return {{$.RecordType}}{}, err
+		return {{$.RecordType}}{}, classifyDatabaseError(err)
 	}
 {{- range .Scan}}
 {{- if .ValueObject}}
@@ -66,7 +66,7 @@ func (s *{{$.StoreType}}) {{.Method}}(ctx context.Context, rec {{$.RecordType}})
 {{- else}}
 	tag, err := s.executor.Exec(ctx, {{.SQL}}{{range .Args}}, {{.}}{{end}})
 	if err != nil {
-		return 0, err
+		return 0, classifyDatabaseError(err)
 	}
 	return tag.RowsAffected(), nil
 {{- end}}
