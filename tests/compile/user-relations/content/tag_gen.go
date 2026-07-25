@@ -98,10 +98,21 @@ func (u *Tag) fieldErr() error {
 	var errs []error
 	for f := TagField(0); f < TagFieldCount; f++ {
 		if err, ok := u.errs[f]; ok {
-			errs = append(errs, err)
+			errs = append(errs, u.validationError(f, err))
 		}
 	}
 	return errors.Join(errs...)
+}
+
+func (u *Tag) validationError(f TagField, err error) error {
+	switch f {
+	case TagFieldID:
+		return ValidationError{Model: "Tag", Field: "id", Err: err}
+	case TagFieldName:
+		return ValidationError{Model: "Tag", Field: "name", Err: err}
+	default:
+		return ValidationError{Model: "Tag", Field: fmt.Sprint(f), Err: err}
+	}
 }
 
 // Err aggregates every current validation error; nil if there are none.

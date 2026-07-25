@@ -28,7 +28,7 @@ func (s *tagStore) find(ctx context.Context, rec tagRecord) (tagRecord, error) {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return tagRecord{}, ErrNotFound
 		}
-		return tagRecord{}, err
+		return tagRecord{}, classifyDatabaseError(err)
 	}
 	return out, nil
 }
@@ -40,7 +40,7 @@ func (s *tagStore) insert(ctx context.Context, rec tagRecord) (tagRecord, error)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return tagRecord{}, ErrNotFound
 		}
-		return tagRecord{}, err
+		return tagRecord{}, classifyDatabaseError(err)
 	}
 	return out, nil
 }

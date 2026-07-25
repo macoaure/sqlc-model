@@ -100,10 +100,21 @@ func (u *User) fieldErr() error {
 	var errs []error
 	for f := UserField(0); f < UserFieldCount; f++ {
 		if err, ok := u.errs[f]; ok {
-			errs = append(errs, err)
+			errs = append(errs, u.validationError(f, err))
 		}
 	}
 	return errors.Join(errs...)
+}
+
+func (u *User) validationError(f UserField, err error) error {
+	switch f {
+	case UserFieldID:
+		return ValidationError{Model: "User", Field: "id", Err: err}
+	case UserFieldName:
+		return ValidationError{Model: "User", Field: "name", Err: err}
+	default:
+		return ValidationError{Model: "User", Field: fmt.Sprint(f), Err: err}
+	}
 }
 
 // Err aggregates every current validation error; nil if there are none.

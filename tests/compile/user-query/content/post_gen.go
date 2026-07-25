@@ -117,10 +117,23 @@ func (u *Post) fieldErr() error {
 	var errs []error
 	for f := PostField(0); f < PostFieldCount; f++ {
 		if err, ok := u.errs[f]; ok {
-			errs = append(errs, err)
+			errs = append(errs, u.validationError(f, err))
 		}
 	}
 	return errors.Join(errs...)
+}
+
+func (u *Post) validationError(f PostField, err error) error {
+	switch f {
+	case PostFieldID:
+		return ValidationError{Model: "Post", Field: "id", Err: err}
+	case PostFieldUserID:
+		return ValidationError{Model: "Post", Field: "user_id", Err: err}
+	case PostFieldTitle:
+		return ValidationError{Model: "Post", Field: "title", Err: err}
+	default:
+		return ValidationError{Model: "Post", Field: fmt.Sprint(f), Err: err}
+	}
 }
 
 // Err aggregates every current validation error; nil if there are none.

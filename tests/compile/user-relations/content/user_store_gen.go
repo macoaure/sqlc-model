@@ -28,7 +28,7 @@ func (s *userStore) find(ctx context.Context, rec userRecord) (userRecord, error
 		if errors.Is(err, pgx.ErrNoRows) {
 			return userRecord{}, ErrNotFound
 		}
-		return userRecord{}, err
+		return userRecord{}, classifyDatabaseError(err)
 	}
 	return out, nil
 }
@@ -40,7 +40,7 @@ func (s *userStore) insert(ctx context.Context, rec userRecord) (userRecord, err
 		if errors.Is(err, pgx.ErrNoRows) {
 			return userRecord{}, ErrNotFound
 		}
-		return userRecord{}, err
+		return userRecord{}, classifyDatabaseError(err)
 	}
 	return out, nil
 }
