@@ -97,3 +97,25 @@ func TestValidateOperation_FindRequiresOne(t *testing.T) {
 		t.Fatalf("expected an error for find requiring :one, got %+v", diags)
 	}
 }
+
+func TestValidateOperation_ListRequiresMany(t *testing.T) {
+	queries := []*pb.Query{{Name: "ListUsers", Cmd: ":one"}}
+	q, diags := contract.ValidateOperation(contract.List, "ListUsers", queries, "path", "ctx", "Model")
+	if q != nil {
+		t.Fatalf("expected nil query for :one list, got %+v", q)
+	}
+	if !diagnostics.HasError(diags) {
+		t.Fatalf("expected an error for list requiring :many, got %+v", diags)
+	}
+}
+
+func TestValidateOperation_SingleRequiresOne(t *testing.T) {
+	queries := []*pb.Query{{Name: "FindByEmail", Cmd: ":many"}}
+	q, diags := contract.ValidateOperation(contract.Single, "FindByEmail", queries, "path", "ctx", "Model")
+	if q != nil {
+		t.Fatalf("expected nil query for :many single, got %+v", q)
+	}
+	if !diagnostics.HasError(diags) {
+		t.Fatalf("expected an error for single requiring :one, got %+v", diags)
+	}
+}

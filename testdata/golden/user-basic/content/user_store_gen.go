@@ -3,6 +3,9 @@ package content
 
 import (
 	"context"
+	"errors"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // userStore executes User's configured sqlc queries directly via
@@ -22,6 +25,9 @@ func (s *userStore) find(ctx context.Context, rec userRecord) (userRecord, error
 	var out userRecord
 	row := s.executor.QueryRow(ctx, "SELECT id, name, email, active, created_at, updated_at FROM users WHERE id = $1;", rec.ID)
 	if err := row.Scan(&out.ID, &out.Name, &out.Email, &out.Active, &out.CreatedAt, &out.UpdatedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return userRecord{}, ErrNotFound
+		}
 		return userRecord{}, err
 	}
 	return out, nil
@@ -31,6 +37,9 @@ func (s *userStore) insert(ctx context.Context, rec userRecord) (userRecord, err
 	var out userRecord
 	row := s.executor.QueryRow(ctx, "INSERT INTO users (name, email, active) VALUES ($1, $2, $3) RETURNING id, name, email, active, created_at, updated_at;", rec.Name, rec.Email, rec.Active)
 	if err := row.Scan(&out.ID, &out.Name, &out.Email, &out.Active, &out.CreatedAt, &out.UpdatedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return userRecord{}, ErrNotFound
+		}
 		return userRecord{}, err
 	}
 	return out, nil
@@ -40,6 +49,9 @@ func (s *userStore) update(ctx context.Context, rec userRecord) (userRecord, err
 	var out userRecord
 	row := s.executor.QueryRow(ctx, "UPDATE users SET name = $1, email = $2, active = $3, updated_at = NOW() WHERE id = $4 RETURNING id, name, email, active, created_at, updated_at;", rec.Name, rec.Email, rec.Active, rec.ID)
 	if err := row.Scan(&out.ID, &out.Name, &out.Email, &out.Active, &out.CreatedAt, &out.UpdatedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return userRecord{}, ErrNotFound
+		}
 		return userRecord{}, err
 	}
 	return out, nil
@@ -57,6 +69,9 @@ func (s *userStore) refresh(ctx context.Context, rec userRecord) (userRecord, er
 	var out userRecord
 	row := s.executor.QueryRow(ctx, "SELECT id, name, email, active, created_at, updated_at FROM users WHERE id = $1;", rec.ID)
 	if err := row.Scan(&out.ID, &out.Name, &out.Email, &out.Active, &out.CreatedAt, &out.UpdatedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return userRecord{}, ErrNotFound
+		}
 		return userRecord{}, err
 	}
 	return out, nil

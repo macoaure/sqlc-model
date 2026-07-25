@@ -326,3 +326,147 @@ func TestBuild_ValueObjectFieldRejectsNullableColumn(t *testing.T) {
 		t.Fatalf("expected nullable value_object diagnostic, got %+v", diags)
 	}
 }
+
+func TestBuild_QueryChainResolvesScopesAndScan(t *testing.T) {
+	idCol := mcol("id", "id", "int8", true)
+	activeCol := mcol("active", "active", "bool", true)
+	limitCol := mcol("limit", "limit", "int4", true)
+	req := &pb.GenerateRequest{Queries: []*pb.Query{
+		{Name: "CreateUser", Cmd: ":one", Columns: []*pb.Column{idCol, activeCol}},
+		{
+			Name:    "ListActiveUsers",
+			Cmd:     ":many",
+			Columns: []*pb.Column{idCol, activeCol},
+			Params: []*pb.Parameter{
+				{Number: 1, Column: activeCol},
+				{Number: 2, Column: limitCol},
+			},
+		},
+	}}
+	root := &config.RootConfiguration{
+		Version: config.SupportedVersion,
+		Contexts: []config.BoundedContext{
+			{
+				Name:      "content",
+				Package:   "content",
+				Directory: "content",
+				Models: []config.ModelConfiguration{
+					{
+						Name:       "User",
+						Row:        "User",
+						Operations: config.Operations{Insert: "CreateUser"},
+						Fields: []config.FieldPolicy{
+							{Name: "id", Readable: true},
+							{Name: "active", Readable: true},
+						},
+						Queries: []config.QueryConfiguration{
+							{
+								Name:      "default",
+								Operation: "ListActiveUsers",
+								Terminal:  config.QueryTerminalGet,
+								Scopes: []config.QueryScope{
+									{Name: "Active", Parameter: "active", ValueSet: true},
+									{Name: "Limit", Parameter: "limit", Argument: "int32"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	p, diags := plan.Build(root, req, nil)
+	if diagnostics.HasError(diags) {
+		t.Fatalf("unexpected errors: %+v", diags)
+	}
+	chains := p.Contexts[0].Models[0].Queries
+	if len(chains) != 1 {
+		t.Fatalf("expected one query chain, got %+v", chains)
+	}
+	chain := chains[0]
+	if chain.Operation == nil || chain.Operation.QueryName != "ListActiveUsers" || len(chain.Scan) != 2 {
+		t.Fatalf("unexpected resolved chain: %+v", chain)
+	}
+	if len(chain.Scopes) != 2 || chain.Scopes[1].GoType.Expr != "int32" {
+		t.Fatalf("unexpected resolved scopes: %+v", chain.Scopes)
+	}
+}
+
+func TestBuild_QueryChainRejectsUnresolvedEagerScope(t *testing.T) {
+	req := &pb.GenerateRequest{Queries: []*pb.Query{
+		{Name: "CreateUser", Cmd: ":one", Columns: []*pb.Column{mcol("id", "id", "int8", true)}},
+		{Name: "ListUsers", Cmd: ":many", Columns: []*pb.Column{mcol("id", "id", "int8", true)}},
+	}}
+	root := &config.RootConfiguration{
+		Version: config.SupportedVersion,
+		Contexts: []config.BoundedContext{
+			{
+				Name:      "content",
+				Package:   "content",
+				Directory: "content",
+				Models: []config.ModelConfiguration{
+					{
+						Name:       "User",
+						Row:        "User",
+						Operations: config.Operations{Insert: "CreateUser"},
+						Fields:     []config.FieldPolicy{{Name: "id", Readable: true}},
+						Queries: []config.QueryConfiguration{
+							{
+								Name:      "default",
+								Operation: "ListUsers",
+								Terminal:  config.QueryTerminalGet,
+								Scopes:    []config.QueryScope{{Name: "WithPosts", Relation: "Posts"}},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	_, diags := plan.Build(root, req, nil)
+	if findDiag(diags, `eager-load scope "WithPosts" references relation "Posts"`) == nil {
+		t.Fatalf("expected unresolved eager scope diagnostic, got %+v", diags)
+	}
+}
+
+func TestBuild_LookupResolvesParamsAndScan(t *testing.T) {
+	idCol := mcol("id", "id", "int8", true)
+	nameCol := mcol("name", "name", "text", true)
+	req := &pb.GenerateRequest{Queries: []*pb.Query{
+		{Name: "CreateUser", Cmd: ":one", Columns: []*pb.Column{idCol, nameCol}},
+		{Name: "FindUserByName", Cmd: ":one", Columns: []*pb.Column{idCol, nameCol}, Params: []*pb.Parameter{{Number: 1, Column: nameCol}}},
+	}}
+	root := &config.RootConfiguration{
+		Version: config.SupportedVersion,
+		Contexts: []config.BoundedContext{
+			{
+				Name:      "content",
+				Package:   "content",
+				Directory: "content",
+				Models: []config.ModelConfiguration{
+					{
+						Name:       "User",
+						Row:        "User",
+						Operations: config.Operations{Insert: "CreateUser"},
+						Fields: []config.FieldPolicy{
+							{Name: "id", Readable: true},
+							{Name: "name", Readable: true},
+						},
+						Lookups: []config.LookupOperation{{Name: "FindByName", Query: "FindUserByName"}},
+					},
+				},
+			},
+		},
+	}
+
+	p, diags := plan.Build(root, req, nil)
+	if diagnostics.HasError(diags) {
+		t.Fatalf("unexpected errors: %+v", diags)
+	}
+	lookups := p.Contexts[0].Models[0].Lookups
+	if len(lookups) != 1 || lookups[0].Name != "FindByName" || len(lookups[0].Operation.Params) != 1 || len(lookups[0].Operation.Scan) != 2 {
+		t.Fatalf("unexpected resolved lookups: %+v", lookups)
+	}
+}

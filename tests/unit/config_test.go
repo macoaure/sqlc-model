@@ -312,6 +312,64 @@ func TestDecode_ValueObjectRequiresTypeConstructorAndAccessor(t *testing.T) {
 	}
 }
 
+func TestDecode_QueryCompositionConfig(t *testing.T) {
+	src := `{"version":1,"sqlc":{"package":"p","import":"i","driver":"pgx/v5"},"contexts":[
+		{"name":"a","package":"a","directory":"a","models":{
+			"User":{"row":"User","operations":{"insert":"CreateUser"},"fields":{},
+				"queries":{
+					"default":{"operation":"ListActiveUsers","terminal":"get","scopes":{
+						"Active":{"parameter":"active","value":true},
+						"Limit":{"parameter":"limit","argument":"int32"},
+						"WithPosts":{"relation":"Posts"}
+					}}
+				},
+				"lookups":{
+					"FindByEmail":{"query":"FindUserByEmail"}
+				}
+			}
+		}}
+	]}`
+	root, diags := config.Decode([]byte(src))
+	if diagnostics.HasError(diags) {
+		t.Fatalf("unexpected errors: %+v", diags)
+	}
+	model := root.Contexts[0].Models[0]
+	if len(model.Queries) != 1 || model.Queries[0].Name != "default" || model.Queries[0].Operation != "ListActiveUsers" || model.Queries[0].Terminal != config.QueryTerminalGet {
+		t.Fatalf("unexpected query config: %+v", model.Queries)
+	}
+	if len(model.Queries[0].Scopes) != 3 {
+		t.Fatalf("expected 3 scopes, got %+v", model.Queries[0].Scopes)
+	}
+	if model.Queries[0].Scopes[0].Name != "Active" || !model.Queries[0].Scopes[0].ValueSet {
+		t.Fatalf("unexpected constant scope: %+v", model.Queries[0].Scopes[0])
+	}
+	if model.Queries[0].Scopes[1].Argument != "int32" {
+		t.Fatalf("unexpected argument scope: %+v", model.Queries[0].Scopes[1])
+	}
+	if model.Queries[0].Scopes[2].Relation != "Posts" {
+		t.Fatalf("unexpected eager scope: %+v", model.Queries[0].Scopes[2])
+	}
+	if len(model.Lookups) != 1 || model.Lookups[0].Name != "FindByEmail" || model.Lookups[0].Query != "FindUserByEmail" {
+		t.Fatalf("unexpected lookups: %+v", model.Lookups)
+	}
+}
+
+func TestDecode_QueryScopeRejectsDynamicShape(t *testing.T) {
+	src := `{"version":1,"sqlc":{"package":"p","import":"i","driver":"pgx/v5"},"contexts":[
+		{"name":"a","package":"a","directory":"a","models":{
+			"User":{"row":"User","operations":{"insert":"CreateUser"},"fields":{},
+				"queries":{"default":{"operation":"ListUsers","terminal":"get","scopes":{
+					"Where":{"field":"name","operator":"=","argument":"string"}
+				}}}
+			}
+		}}
+	]}`
+	_, diags := config.Decode([]byte(src))
+	if !diagnostics.HasError(diags) {
+		t.Fatalf("expected dynamic scope shape to be rejected, got %+v", diags)
+	}
+}
+
 func TestDecode_UnknownFieldRejected(t *testing.T) {
 	src := `{"version":1,"sqlc":{"package":"p","import":"i","driver":"pgx/v5"},"contexts":[],"bogus":true}`
 	root, diags := config.Decode([]byte(src))

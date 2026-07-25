@@ -14,8 +14,14 @@ package {{.Package}}
 
 import (
 	"context"
+{{- if .NeedsNoRows}}
+	"errors"
+{{- end}}
 {{- if .NeedsFmt}}
 	"fmt"
+{{- end}}
+{{- if .NeedsNoRows}}
+	"github.com/jackc/pgx/v5"
 {{- end}}
 )
 
@@ -42,6 +48,9 @@ func (s *{{$.StoreType}}) {{.Method}}(ctx context.Context, rec {{$.RecordType}})
 {{- end}}
 	row := s.executor.QueryRow(ctx, {{.SQL}}{{range .Args}}, {{.}}{{end}})
 	if err := row.Scan({{range $i, $f := .Scan}}{{if $i}}, {{end}}{{.ScanTarget}}{{end}}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return {{$.RecordType}}{}, ErrNotFound
+		}
 		return {{$.RecordType}}{}, err
 	}
 {{- range .Scan}}
@@ -85,12 +94,13 @@ type storeScanData struct {
 }
 
 type storeTemplateData struct {
-	Package    string
-	Row        string
-	StoreType  string
-	RecordType string
-	Operations []storeOperationData
-	NeedsFmt   bool
+	Package     string
+	Row         string
+	StoreType   string
+	RecordType  string
+	Operations  []storeOperationData
+	NeedsFmt    bool
+	NeedsNoRows bool
 }
 
 // RenderStore renders <model>_store_gen.go: the adapter that executes m's
@@ -120,6 +130,7 @@ func RenderStore(ctx plan.ResolvedContext, m plan.ResolvedModel) ([]byte, []diag
 		}
 		if op.ReturnsRow {
 			op.ReturnType = data.RecordType
+			data.NeedsNoRows = true
 		} else {
 			op.ReturnType = "int64"
 		}

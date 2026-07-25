@@ -105,4 +105,6 @@ var (
 	// ErrTransactionUnavailable is returned when Transaction is called on a
 	// session that cannot open a new database transaction.
 	ErrTransactionUnavailable = errors.New("richmodel: transaction is unavailable on this session")
+	// ErrNotFound is returned by single-record fetches when no row matches.
+	ErrNotFound = errors.New("richmodel: not found")
 )

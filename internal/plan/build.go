@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"unicode"
@@ -36,6 +37,8 @@ type ResolvedModel struct {
 	Operations ResolvedOperations
 	Fields     []ResolvedField
 	Relations  []ResolvedRelation
+	Queries    []ResolvedQuery
+	Lookups    []ResolvedLookup
 }
 
 // ResolvedOperations holds the matched sqlc query for each configured
@@ -71,6 +74,33 @@ type ResolvedOperation struct {
 type ParamBinding struct {
 	Number int32
 	Field  *ResolvedField
+}
+
+type ResolvedQuery struct {
+	Name      string
+	Terminal  config.QueryTerminal
+	Operation *ResolvedOperation
+	Scopes    []ResolvedQueryScope
+	Scan      []*ResolvedField
+}
+
+type ResolvedQueryScope struct {
+	Name      string
+	Parameter string
+	Value     json.RawMessage
+	ValueSet  bool
+	Argument  string
+	QueryName string
+	Relation  string
+	GoType    mapping.GoType
+	Number    int32
+	Variant   *pb.Query
+}
+
+type ResolvedLookup struct {
+	Name      string
+	QueryName string
+	Operation *ResolvedOperation
 }
 
 // ResolvedField is one field fully resolved: its mapping.ResolvedField
@@ -210,7 +240,173 @@ func buildModel(ctx config.BoundedContext, m config.ModelConfiguration, queries 
 		}
 	}
 
+	diags = append(diags, resolveQueries(ctx, m, &rm, queries, path)...)
+	diags = append(diags, resolveLookups(ctx, m, &rm, queries, path)...)
+
 	return rm, diags
+}
+
+func resolveQueries(ctx config.BoundedContext, m config.ModelConfiguration, rm *ResolvedModel, queries []*pb.Query, path string) []diagnostics.Diagnostic {
+	var diags []diagnostics.Diagnostic
+	for _, qc := range m.Queries {
+		qpath := fmt.Sprintf("%s.queries.%s", path, qc.Name)
+		kind := operationKindForTerminal(qc.Terminal)
+		opQuery, qdiags := contract.ValidateOperation(kind, qc.Operation, queries, qpath+".operation", ctx.Name, m.Name)
+		diags = append(diags, qdiags...)
+		if opQuery == nil {
+			continue
+		}
+
+		ro := &ResolvedOperation{Kind: kind, QueryName: qc.Operation, Query: opQuery}
+		rq := ResolvedQuery{Name: qc.Name, Terminal: qc.Terminal, Operation: ro}
+		if kind != contract.Delete {
+			diags = append(diags, resolveScanOrder(rm, ro, qpath, ctx.Name, m.Name)...)
+			rq.Scan = ro.Scan
+		}
+		diags = append(diags, resolveQueryScopes(ctx, m, rm, &rq, qc, queries, qpath)...)
+		diags = append(diags, validateQueryParamsCovered(&rq, qpath, ctx.Name, m.Name)...)
+		rm.Queries = append(rm.Queries, rq)
+	}
+	return diags
+}
+
+func resolveLookups(ctx config.BoundedContext, m config.ModelConfiguration, rm *ResolvedModel, queries []*pb.Query, path string) []diagnostics.Diagnostic {
+	var diags []diagnostics.Diagnostic
+	for _, lo := range m.Lookups {
+		lpath := fmt.Sprintf("%s.lookups.%s", path, lo.Name)
+		q, qdiags := contract.ValidateOperation(contract.Lookup, lo.Query, queries, lpath+".query", ctx.Name, m.Name)
+		diags = append(diags, qdiags...)
+		if q == nil {
+			continue
+		}
+		ro := &ResolvedOperation{Kind: contract.Lookup, QueryName: lo.Query, Query: q}
+		diags = append(diags, resolveParams(rm, ro, lpath, ctx.Name, m.Name)...)
+		diags = append(diags, resolveScanOrder(rm, ro, lpath, ctx.Name, m.Name)...)
+		rm.Lookups = append(rm.Lookups, ResolvedLookup{Name: lo.Name, QueryName: lo.Query, Operation: ro})
+	}
+	return diags
+}
+
+func operationKindForTerminal(t config.QueryTerminal) contract.OperationKind {
+	switch t {
+	case config.QueryTerminalGet:
+		return contract.List
+	case config.QueryTerminalFirst, config.QueryTerminalFind:
+		return contract.Single
+	case config.QueryTerminalDelete:
+		return contract.Delete
+	case config.QueryTerminalRefresh:
+		return contract.Refresh
+	default:
+		return contract.List
+	}
+}
+
+func resolveQueryScopes(ctx config.BoundedContext, m config.ModelConfiguration, rm *ResolvedModel, rq *ResolvedQuery, qc config.QueryConfiguration, queries []*pb.Query, path string) []diagnostics.Diagnostic {
+	var diags []diagnostics.Diagnostic
+	for _, sc := range qc.Scopes {
+		rs := ResolvedQueryScope{
+			Name:      sc.Name,
+			Parameter: sc.Parameter,
+			Value:     sc.Value,
+			ValueSet:  sc.ValueSet,
+			Argument:  sc.Argument,
+			QueryName: sc.Query,
+			Relation:  sc.Relation,
+		}
+		spath := path + ".scopes." + sc.Name
+
+		if sc.Parameter != "" {
+			param := findQueryParam(rq.Operation.Query, sc.Parameter)
+			if param == nil {
+				diags = append(diags, diagnostics.Diagnostic{
+					Severity: diagnostics.SeverityError,
+					Path:     spath + ".parameter",
+					Context:  ctx.Name,
+					Model:    m.Name,
+					Query:    rq.Operation.QueryName,
+					Message:  fmt.Sprintf("query scope %q references parameter %q, but query %q has no such parameter", sc.Name, sc.Parameter, rq.Operation.QueryName),
+				})
+			} else {
+				rs.Number = param.GetNumber()
+				rs.GoType = mapping.ResolveGoType(param.GetColumn())
+				if sc.Argument != "" && rs.GoType.Expr != sc.Argument {
+					diags = append(diags, diagnostics.Diagnostic{
+						Severity: diagnostics.SeverityError,
+						Path:     spath + ".argument",
+						Context:  ctx.Name,
+						Model:    m.Name,
+						Query:    rq.Operation.QueryName,
+						Message:  fmt.Sprintf("query scope %q argument type %q does not match parameter %q type %q", sc.Name, sc.Argument, sc.Parameter, rs.GoType.Expr),
+					})
+				}
+			}
+		}
+
+		if sc.Query != "" {
+			q, qdiags := contract.ValidateOperation(rq.Operation.Kind, sc.Query, queries, spath+".query", ctx.Name, m.Name)
+			diags = append(diags, qdiags...)
+			rs.Variant = q
+		}
+
+		if sc.Relation != "" && !hasEagerRelationConfig(m, sc.Relation) {
+			diags = append(diags, diagnostics.Diagnostic{
+				Severity: diagnostics.SeverityError,
+				Path:     spath + ".relation",
+				Context:  ctx.Name,
+				Model:    m.Name,
+				Message:  fmt.Sprintf("eager-load scope %q references relation %q, but that relation has no eager_query", sc.Name, sc.Relation),
+			})
+		}
+
+		rq.Scopes = append(rq.Scopes, rs)
+	}
+	return diags
+}
+
+func validateQueryParamsCovered(rq *ResolvedQuery, path, context, model string) []diagnostics.Diagnostic {
+	var diags []diagnostics.Diagnostic
+	covered := make(map[int32]bool)
+	for _, sc := range rq.Scopes {
+		if sc.Parameter != "" && sc.Number != 0 {
+			covered[sc.Number] = true
+		}
+	}
+	for _, p := range rq.Operation.Query.GetParams() {
+		if !covered[p.GetNumber()] {
+			name := ""
+			if col := p.GetColumn(); col != nil {
+				name = col.Name
+			}
+			diags = append(diags, diagnostics.Diagnostic{
+				Severity: diagnostics.SeverityError,
+				Path:     path,
+				Context:  context,
+				Model:    model,
+				Query:    rq.Operation.QueryName,
+				Message:  fmt.Sprintf("query %q parameter %d (%q) is not supplied by any configured scope", rq.Operation.QueryName, p.GetNumber(), name),
+			})
+		}
+	}
+	return diags
+}
+
+func findQueryParam(q *pb.Query, name string) *pb.Parameter {
+	for _, p := range q.GetParams() {
+		if col := p.GetColumn(); col != nil && strings.EqualFold(col.Name, name) {
+			return p
+		}
+	}
+	return nil
+}
+
+func hasEagerRelationConfig(m config.ModelConfiguration, name string) bool {
+	for _, rel := range m.Relations {
+		if rel.Name == name && rel.EagerQuery != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // resolveScanOrder binds each column an operation's query returns, in that

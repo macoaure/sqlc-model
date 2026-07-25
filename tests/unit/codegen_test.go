@@ -61,6 +61,95 @@ func TestRenderCollection_FindParamNaming(t *testing.T) {
 	}
 }
 
+func TestRenderCollection_QueryChainGet(t *testing.T) {
+	id := rfield("ID", "int64")
+	active := rfield("Active", "bool")
+	limitParam := &plan.ResolvedQueryScope{Name: "Limit", Parameter: "limit", Argument: "int32", GoType: mapping.GoType{Expr: "int32"}, Number: 2}
+	activeParam := &plan.ResolvedQueryScope{Name: "Active", Parameter: "active", Value: []byte("true"), ValueSet: true, GoType: mapping.GoType{Expr: "bool"}, Number: 1}
+	ctx := plan.ResolvedContext{Name: "content", Package: "content", Directory: "content"}
+	m := plan.ResolvedModel{
+		Name:   "User",
+		Row:    "User",
+		Fields: []plan.ResolvedField{*id, *active},
+		Queries: []plan.ResolvedQuery{
+			{
+				Name:     "default",
+				Terminal: config.QueryTerminalGet,
+				Operation: &plan.ResolvedOperation{
+					Kind:      contract.List,
+					QueryName: "ListActiveUsers",
+					Query:     &pb.Query{Name: "ListActiveUsers", Cmd: ":many", Text: "SELECT id, active FROM users WHERE active = $1 LIMIT $2"},
+				},
+				Scopes: []plan.ResolvedQueryScope{*activeParam, *limitParam},
+				Scan:   []*plan.ResolvedField{id, active},
+			},
+		},
+	}
+
+	out, diags := codegen.RenderCollection(ctx, m)
+	if diagnostics.HasError(diags) {
+		t.Fatalf("unexpected errors: %+v", diags)
+	}
+	src := string(out)
+	for _, want := range []string{
+		"func (c *UserCollection) Query() UserQuery",
+		"type UserQuery struct",
+		"func (q UserQuery) Active() UserQuery",
+		"func (q UserQuery) Limit(limit int32) UserQuery",
+		"func (q UserQuery) Get(ctx context.Context) ([]*User, error)",
+		"q.coll.session.executor.Query(ctx",
+		"rows.Scan(&rec.ID, &rec.Active)",
+		"out = append(out, u)",
+	} {
+		if !strings.Contains(src, want) {
+			t.Fatalf("expected generated collection to contain %q:\n%s", want, src)
+		}
+	}
+}
+
+func TestRenderCollection_QueryVariantScope(t *testing.T) {
+	id := rfield("ID", "int64")
+	ctx := plan.ResolvedContext{Name: "content", Package: "content", Directory: "content"}
+	m := plan.ResolvedModel{
+		Name:   "User",
+		Row:    "User",
+		Fields: []plan.ResolvedField{*id},
+		Queries: []plan.ResolvedQuery{
+			{
+				Name:     "default",
+				Terminal: config.QueryTerminalGet,
+				Operation: &plan.ResolvedOperation{
+					Kind:      contract.List,
+					QueryName: "ListUsers",
+					Query:     &pb.Query{Name: "ListUsers", Cmd: ":many", Text: "SELECT id FROM users"},
+				},
+				Scopes: []plan.ResolvedQueryScope{
+					{Name: "OrderByName", QueryName: "ListUsersByName", Variant: &pb.Query{Name: "ListUsersByName", Cmd: ":many", Text: "SELECT id FROM users ORDER BY name"}},
+				},
+				Scan: []*plan.ResolvedField{id},
+			},
+		},
+	}
+
+	out, diags := codegen.RenderCollection(ctx, m)
+	if diagnostics.HasError(diags) {
+		t.Fatalf("unexpected errors: %+v", diags)
+	}
+	src := string(out)
+	for _, want := range []string{
+		"querySQL string",
+		"func (q UserQuery) OrderByName() UserQuery",
+		`q.querySQL = "SELECT id FROM users ORDER BY name"`,
+		`sql := "SELECT id FROM users"`,
+		"if q.querySQL != \"\"",
+		"rows, err := q.coll.session.executor.Query(ctx, sql)",
+	} {
+		if !strings.Contains(src, want) {
+			t.Fatalf("expected generated collection to contain %q:\n%s", want, src)
+		}
+	}
+}
+
 // TestRenderModel_SliceField exercises the NeedsSlices branch for a field
 // whose Go type is a slice.
 func TestRenderModel_SliceField(t *testing.T) {
@@ -164,6 +253,77 @@ func TestRenderStore_ValueObjectConvertsAtBoundaries(t *testing.T) {
 	} {
 		if !strings.Contains(src, want) {
 			t.Fatalf("expected generated store to contain %q:\n%s", want, src)
+		}
+	}
+}
+
+func TestRenderStore_MapsNoRowsToErrNotFound(t *testing.T) {
+	field := rfield("ID", "int64")
+	ctx := plan.ResolvedContext{Name: "content", Package: "content", Directory: "content"}
+	m := plan.ResolvedModel{
+		Name:   "User",
+		Row:    "User",
+		Fields: []plan.ResolvedField{*field},
+		Operations: plan.ResolvedOperations{
+			Find: &plan.ResolvedOperation{
+				Kind:  contract.Find,
+				Query: &pb.Query{Name: "FindUser", Cmd: ":one", Text: "SELECT id FROM users WHERE id = $1"},
+				Scan:  []*plan.ResolvedField{field},
+			},
+		},
+	}
+
+	out, diags := codegen.RenderStore(ctx, m)
+	if diagnostics.HasError(diags) {
+		t.Fatalf("unexpected errors: %+v", diags)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`errors.Is(err, pgx.ErrNoRows)`,
+		"return userRecord{}, ErrNotFound",
+	} {
+		if !strings.Contains(src, want) {
+			t.Fatalf("expected generated store to contain %q:\n%s", want, src)
+		}
+	}
+}
+
+func TestRenderCollection_LookupMapsNoRowsToErrNotFound(t *testing.T) {
+	id := rfield("ID", "int64")
+	name := rfield("Name", "string")
+	ctx := plan.ResolvedContext{Name: "content", Package: "content", Directory: "content"}
+	m := plan.ResolvedModel{
+		Name:   "User",
+		Row:    "User",
+		Fields: []plan.ResolvedField{*id, *name},
+		Lookups: []plan.ResolvedLookup{
+			{
+				Name:      "FindByName",
+				QueryName: "FindUserByName",
+				Operation: &plan.ResolvedOperation{
+					Kind:  contract.Lookup,
+					Query: &pb.Query{Name: "FindUserByName", Cmd: ":one", Text: "SELECT id, name FROM users WHERE name = $1"},
+					Params: []plan.ParamBinding{
+						{Number: 1, Field: name},
+					},
+					Scan: []*plan.ResolvedField{id, name},
+				},
+			},
+		},
+	}
+
+	out, diags := codegen.RenderCollection(ctx, m)
+	if diagnostics.HasError(diags) {
+		t.Fatalf("unexpected errors: %+v", diags)
+	}
+	src := string(out)
+	for _, want := range []string{
+		"func (c *UserCollection) FindByName(ctx context.Context, name string) (*User, error)",
+		`errors.Is(err, pgx.ErrNoRows)`,
+		"return nil, ErrNotFound",
+	} {
+		if !strings.Contains(src, want) {
+			t.Fatalf("expected generated collection to contain %q:\n%s", want, src)
 		}
 	}
 }

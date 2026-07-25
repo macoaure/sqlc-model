@@ -2,6 +2,7 @@ package codegen
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -14,9 +15,15 @@ package {{.Package}}
 
 import (
 	"context"
+{{- if .NeedsNoRows}}
+	"errors"
+{{- end}}
 
 {{- range .Imports}}
 	"{{.}}"
+{{- end}}
+{{- if .NeedsNoRows}}
+	"github.com/jackc/pgx/v5"
 {{- end}}
 )
 
@@ -35,6 +42,67 @@ func new{{.Row}}Collection(sess *Session) *{{.Row}}Collection {
 func (c *{{.Row}}Collection) New() *{{.Row}} {
 	return &{{.Row}}{coll: c, state: modelStateNew}
 }
+{{if .HasQueries}}
+// Query starts a statically configured {{.Row}} query chain.
+func (c *{{.Row}}Collection) Query() {{.QueryType}} {
+	return {{.QueryType}}{coll: c}
+}
+
+type {{.QueryType}} struct {
+	coll *{{.Row}}Collection
+{{- if .HasVariant}}
+	querySQL string
+{{- end}}
+{{- range .QueryFields}}
+	{{.Name}} {{.Type}}
+{{- end}}
+}
+{{range .QueryScopes}}
+func (q {{$.QueryType}}) {{.Method}}({{.ParamDecl}}) {{$.QueryType}} {
+{{- if .Assign}}
+	q.{{.FieldName}} = {{.ValueExpr}}
+{{- end}}
+	return q
+}
+{{end}}
+{{range .QueryTerminals}}
+func (q {{$.QueryType}}) {{.Method}}(ctx context.Context) ({{.ReturnType}}, error) {
+	sql := {{.SQL}}
+{{- if $.HasVariant}}
+	if q.querySQL != "" {
+		sql = q.querySQL
+	}
+{{- end}}
+	rows, err := q.coll.session.executor.Query(ctx, sql{{range .Args}}, {{.}}{{end}})
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []*{{$.Row}}
+	for rows.Next() {
+		var rec {{$.RecordType}}
+		if err := rows.Scan({{range $i, $f := .Scan}}{{if $i}}, {{end}}&rec.{{$f}}{{end}}); err != nil {
+			return nil, err
+		}
+		u := &{{$.Row}}{coll: q.coll, state: modelStatePersisted}
+		u.current, u.original = rec, rec
+		out = append(out, u)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+{{- range .EagerCalls}}
+	if q.{{.FlagField}} {
+		if err := q.coll.EagerLoad(ctx, out, With{{.Relation}}()); err != nil {
+			return nil, err
+		}
+	}
+{{- end}}
+	return out, nil
+}
+{{end}}
+{{end}}
 {{if .HasFind}}
 // Find looks up a persisted {{.Row}} by its configured find operation.
 func (c *{{.Row}}Collection) Find(ctx context.Context{{range .FindParams}}, {{.ParamName}} {{.GoType}}{{end}}) (*{{.Row}}, error) {
@@ -51,6 +119,21 @@ func (c *{{.Row}}Collection) Find(ctx context.Context{{range .FindParams}}, {{.P
 	return u, nil
 }
 {{end}}
+{{range .Lookups}}
+func (c *{{$.Row}}Collection) {{.Method}}(ctx context.Context{{range .Params}}, {{.ParamName}} {{.GoType}}{{end}}) (*{{$.Row}}, error) {
+	var rec {{$.RecordType}}
+	row := c.session.executor.QueryRow(ctx, {{.SQL}}{{range .Args}}, {{.}}{{end}})
+	if err := row.Scan({{range $i, $f := .Scan}}{{if $i}}, {{end}}&rec.{{$f}}{{end}}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	u := &{{$.Row}}{coll: c, state: modelStatePersisted}
+	u.current, u.original = rec, rec
+	return u, nil
+}
+{{end}}
 `
 
 type collectionParamData struct {
@@ -59,14 +142,57 @@ type collectionParamData struct {
 	GoType    string
 }
 
+type queryFieldData struct {
+	Name string
+	Type string
+}
+
+type queryScopeData struct {
+	Method    string
+	ParamDecl string
+	Assign    bool
+	FieldName string
+	ValueExpr string
+}
+
+type queryTerminalData struct {
+	Method     string
+	ReturnType string
+	SQL        string
+	Args       []string
+	Scan       []string
+	EagerCalls []queryEagerCallData
+}
+
+type queryEagerCallData struct {
+	FlagField string
+	Relation  string
+}
+
+type lookupData struct {
+	Method string
+	SQL    string
+	Params []collectionParamData
+	Args   []string
+	Scan   []string
+}
+
 type collectionTemplateData struct {
-	Package    string
-	Row        string
-	StoreType  string
-	RecordType string
-	HasFind    bool
-	FindParams []collectionParamData
-	Imports    []string
+	Package        string
+	Row            string
+	StoreType      string
+	RecordType     string
+	QueryType      string
+	HasFind        bool
+	HasQueries     bool
+	FindParams     []collectionParamData
+	QueryFields    []queryFieldData
+	QueryScopes    []queryScopeData
+	QueryTerminals []queryTerminalData
+	Lookups        []lookupData
+	HasVariant     bool
+	NeedsNoRows    bool
+	Imports        []string
 }
 
 // lowerFirst produces an idiomatic unexported parameter name from an
@@ -93,7 +219,9 @@ func RenderCollection(ctx plan.ResolvedContext, m plan.ResolvedModel) ([]byte, [
 		Row:        m.Row,
 		StoreType:  StoreTypeName(m.Row),
 		RecordType: RecordTypeName(m.Row),
+		QueryType:  m.Row + "Query",
 		HasFind:    m.Operations.Find != nil,
+		HasQueries: len(m.Queries) > 0,
 	}
 
 	var imports []string
@@ -113,8 +241,128 @@ func RenderCollection(ctx plan.ResolvedContext, m plan.ResolvedModel) ([]byte, [
 			imports = append(imports, pb.Field.GoType.Import)
 		}
 	}
+	if len(m.Queries) > 0 {
+		queryData, queryImports := buildQueryData(m)
+		data.QueryFields = queryData.fields
+		data.QueryScopes = queryData.scopes
+		data.QueryTerminals = queryData.terminals
+		data.HasVariant = queryData.hasVariant
+		imports = append(imports, queryImports...)
+	}
+	for _, lo := range m.Lookups {
+		data.NeedsNoRows = true
+		ld := lookupData{Method: lo.Name, SQL: strconv.Quote(lo.Operation.Query.GetText())}
+		usedNames := make(map[string]int)
+		for _, pb := range sortedParams(lo.Operation.Params) {
+			name := lowerFirst(pb.Field.GoField)
+			usedNames[name]++
+			if n := usedNames[name]; n > 1 {
+				name = fmt.Sprintf("%s%d", name, n)
+			}
+			ld.Params = append(ld.Params, collectionParamData{ParamName: name, GoField: pb.Field.GoField, GoType: pb.Field.GoType.Expr})
+			ld.Args = append(ld.Args, name)
+			imports = append(imports, pb.Field.GoType.Import)
+		}
+		for _, f := range lo.Operation.Scan {
+			ld.Scan = append(ld.Scan, f.GoField)
+		}
+		data.Lookups = append(data.Lookups, ld)
+	}
 	data.Imports = uniqueSortedImports(imports...)
 
 	filePath := fmt.Sprintf("%s/%s_collection_gen.go", ctx.Directory, fileStem(m.Row))
 	return render(filePath, "collection_gen.go", collectionTemplate, data, ctx.Name, m.Name)
+}
+
+type builtQueryData struct {
+	fields     []queryFieldData
+	scopes     []queryScopeData
+	terminals  []queryTerminalData
+	hasVariant bool
+}
+
+func buildQueryData(m plan.ResolvedModel) (builtQueryData, []string) {
+	var out builtQueryData
+	var imports []string
+	fieldSeen := map[string]bool{}
+	scopeSeen := map[string]bool{}
+	for _, q := range m.Queries {
+		for _, sc := range q.Scopes {
+			fieldName := lowerFirst(sc.Name)
+			switch {
+			case sc.Parameter != "":
+				if !fieldSeen[fieldName] {
+					out.fields = append(out.fields, queryFieldData{Name: fieldName, Type: sc.GoType.Expr})
+					fieldSeen[fieldName] = true
+					imports = append(imports, sc.GoType.Import)
+				}
+				if !scopeSeen[sc.Name] {
+					paramDecl := ""
+					valueExpr := zeroValue(sc.GoType.Expr)
+					if len(sc.Value) > 0 {
+						valueExpr = string(sc.Value)
+					}
+					if sc.Argument != "" {
+						paramName := lowerFirst(sc.Name)
+						paramDecl = fmt.Sprintf("%s %s", paramName, sc.GoType.Expr)
+						valueExpr = paramName
+					}
+					out.scopes = append(out.scopes, queryScopeData{Method: sc.Name, ParamDecl: paramDecl, Assign: true, FieldName: fieldName, ValueExpr: valueExpr})
+					scopeSeen[sc.Name] = true
+				}
+			case sc.Relation != "":
+				if !fieldSeen[fieldName] {
+					out.fields = append(out.fields, queryFieldData{Name: fieldName, Type: "bool"})
+					fieldSeen[fieldName] = true
+				}
+				if !scopeSeen[sc.Name] {
+					out.scopes = append(out.scopes, queryScopeData{Method: sc.Name, Assign: true, FieldName: fieldName, ValueExpr: "true"})
+					scopeSeen[sc.Name] = true
+				}
+			case sc.Variant != nil:
+				out.hasVariant = true
+				if !scopeSeen[sc.Name] {
+					out.scopes = append(out.scopes, queryScopeData{Method: sc.Name, Assign: true, FieldName: "querySQL", ValueExpr: strconv.Quote(sc.Variant.GetText())})
+					scopeSeen[sc.Name] = true
+				}
+			}
+		}
+		if q.Terminal == "get" {
+			term := queryTerminalData{Method: "Get", ReturnType: "[]*" + m.Row, SQL: strconv.Quote(q.Operation.Query.GetText())}
+			for _, sc := range sortedQueryScopes(q.Scopes) {
+				if sc.Parameter != "" {
+					term.Args = append(term.Args, "q."+lowerFirst(sc.Name))
+				}
+				if sc.Relation != "" {
+					term.EagerCalls = append(term.EagerCalls, queryEagerCallData{FlagField: lowerFirst(sc.Name), Relation: sc.Relation})
+				}
+			}
+			for _, f := range q.Scan {
+				term.Scan = append(term.Scan, f.GoField)
+			}
+			out.terminals = append(out.terminals, term)
+		}
+	}
+	return out, imports
+}
+
+func sortedQueryScopes(scopes []plan.ResolvedQueryScope) []plan.ResolvedQueryScope {
+	out := make([]plan.ResolvedQueryScope, len(scopes))
+	copy(out, scopes)
+	for i := 1; i < len(out); i++ {
+		for j := i; j > 0 && out[j].Number < out[j-1].Number; j-- {
+			out[j], out[j-1] = out[j-1], out[j]
+		}
+	}
+	return out
+}
+
+func zeroValue(goType string) string {
+	switch goType {
+	case "bool":
+		return "false"
+	case "string":
+		return `""`
+	}
+	return "0"
 }

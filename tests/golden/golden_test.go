@@ -119,6 +119,34 @@ func TestValueObjectFieldMapping(t *testing.T) {
 	}
 }
 
+func TestQueryCompositionAPI(t *testing.T) {
+	resp, diags := generate.Generate(queryCompositionRequest(t))
+	if resp == nil {
+		t.Fatalf("generation failed: %v", diags)
+	}
+	if *update {
+		writeFiles(t, filepath.Join("..", "compile", "user-query"), resp.Files)
+		t.Log("updated query-composition compile fixture")
+	}
+
+	collection := generatedFile(t, resp.Files, "content/user_collection_gen.go")
+	for _, want := range []string{
+		"func (c *UserCollection) Query() UserQuery",
+		"func (q UserQuery) Active() UserQuery",
+		"func (q UserQuery) Limit(limit int32) UserQuery",
+		"func (q UserQuery) OrderByName() UserQuery",
+		"func (q UserQuery) WithPosts() UserQuery",
+		"func (q UserQuery) Get(ctx context.Context) ([]*User, error)",
+		"q.coll.session.executor.Query(ctx, sql, q.active, q.limit)",
+		"q.coll.EagerLoad(ctx, out, WithPosts())",
+		"func (c *UserCollection) FindByName(ctx context.Context, name string) (*User, error)",
+	} {
+		if !strings.Contains(collection, want) {
+			t.Fatalf("expected generated collection to contain %q:\n%s", want, collection)
+		}
+	}
+}
+
 // assertGolden is TestUserBasic's comparison logic, generalized so other
 // fixtures (e.g. the field-policy matrix) can reuse it against their own
 // testdata/golden/<name>/ directory.

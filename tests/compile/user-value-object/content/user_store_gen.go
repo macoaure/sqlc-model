@@ -3,7 +3,10 @@ package content
 
 import (
 	"context"
+	"errors"
 	"fmt"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // userStore executes User's configured sqlc queries directly via
@@ -24,6 +27,9 @@ func (s *userStore) find(ctx context.Context, rec userRecord) (userRecord, error
 	var scanEmail string
 	row := s.executor.QueryRow(ctx, "SELECT id, email FROM users WHERE id = $1;", rec.ID)
 	if err := row.Scan(&out.ID, &scanEmail); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return userRecord{}, ErrNotFound
+		}
 		return userRecord{}, err
 	}
 	email, err := NewEmail(scanEmail)
@@ -39,6 +45,9 @@ func (s *userStore) insert(ctx context.Context, rec userRecord) (userRecord, err
 	var scanEmail string
 	row := s.executor.QueryRow(ctx, "INSERT INTO users (email) VALUES ($1) RETURNING id, email;", rec.Email.String())
 	if err := row.Scan(&out.ID, &scanEmail); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return userRecord{}, ErrNotFound
+		}
 		return userRecord{}, err
 	}
 	email, err := NewEmail(scanEmail)
@@ -54,6 +63,9 @@ func (s *userStore) update(ctx context.Context, rec userRecord) (userRecord, err
 	var scanEmail string
 	row := s.executor.QueryRow(ctx, "UPDATE users SET email = $1 WHERE id = $2 RETURNING id, email;", rec.Email.String(), rec.ID)
 	if err := row.Scan(&out.ID, &scanEmail); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return userRecord{}, ErrNotFound
+		}
 		return userRecord{}, err
 	}
 	email, err := NewEmail(scanEmail)
@@ -69,6 +81,9 @@ func (s *userStore) refresh(ctx context.Context, rec userRecord) (userRecord, er
 	var scanEmail string
 	row := s.executor.QueryRow(ctx, "SELECT id, email FROM users WHERE id = $1;", rec.ID)
 	if err := row.Scan(&out.ID, &scanEmail); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return userRecord{}, ErrNotFound
+		}
 		return userRecord{}, err
 	}
 	email, err := NewEmail(scanEmail)

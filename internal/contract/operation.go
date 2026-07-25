@@ -10,6 +10,9 @@ const (
 	Update  OperationKind = "update"
 	Delete  OperationKind = "delete"
 	Refresh OperationKind = "refresh"
+	List    OperationKind = "list"
+	Single  OperationKind = "single"
+	Lookup  OperationKind = "lookup"
 )
 
 // requirement describes what sqlc query command a given operation kind
@@ -30,4 +33,7 @@ var requirements = map[OperationKind]requirement{
 	Update:  {cmd: ":one"},
 	Delete:  {cmd: ":execrows", fallbackCmd: ":exec"},
 	Refresh: {cmd: ":one"},
+	List:    {cmd: ":many"},
+	Single:  {cmd: ":one"},
+	Lookup:  {cmd: ":one"},
 }
