@@ -25,6 +25,12 @@ The architecture is designed against the public behavior documented by the follo
 - Context package: https://pkg.go.dev/context
 - Go modules reference: https://go.dev/ref/mod
 
+## pgx
+
+- pgx package: https://pkg.go.dev/github.com/jackc/pgx/v5
+- pgxpool package: https://pkg.go.dev/github.com/jackc/pgx/v5/pgxpool
+- CommandTag: https://pkg.go.dev/github.com/jackc/pgx/v5/pgconn#CommandTag
+
 ## Laravel Eloquent concepts
 
 - Eloquent ORM: https://laravel.com/docs/eloquent

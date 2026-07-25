@@ -3,10 +3,10 @@
 ## Construction
 
 ```go
-func New(db sqlcdb.DBTX, options ...SessionOption) *Session
+func New(pool *pgxpool.Pool, options ...SessionOption) *Session
 ```
 
-A session contains model collections, a sqlc `Querier`, database transaction capability, runtime policies, and a private identity token.
+A session contains model collections, database transaction capability, runtime policies, and a private identity token.
 
 ```go
 type Session struct {
@@ -25,14 +25,12 @@ func (s *Session) Transaction(
 ) error
 ```
 
-The callback session is bound to `Queries.WithTx(tx)` and has a distinct session identity.
+The callback session is bound to the underlying `pgx.Tx` and has a distinct session identity. Returning nil commits. Returning an error rolls back and returns that error. Panicking rolls back before the panic continues.
 
 ## Options
 
 ```go
 func WithLazyLoading(mode LazyLoadingMode) SessionOption
-func WithLogger(logger Logger) SessionOption
-func WithErrorTranslator(t DatabaseErrorTranslator) SessionOption
 ```
 
 ## Lazy-loading modes

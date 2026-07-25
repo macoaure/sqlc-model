@@ -48,6 +48,23 @@ if err := user.Save(ctx); err != nil {
 }
 ```
 
+Run related model operations atomically with `Transaction`:
+
+```go
+err := models.Transaction(ctx, func(tx *content.Session) error {
+    user := tx.Users.New().SetName("Ada Lovelace")
+    if err := user.Save(ctx); err != nil {
+        return err
+    }
+
+    post := tx.Posts.New().SetTitle("Notes")
+    if err := post.Author().Associate(user); err != nil {
+        return err
+    }
+    return post.Save(ctx)
+})
+```
+
 ## Status
 
 This project is under active development. See [specs/](specs/) for the specifications driving implementation.
