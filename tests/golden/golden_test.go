@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/macoaure/sqlc-gen-richmodel/internal/diagnostics"
@@ -47,6 +48,40 @@ func TestFieldPolicyMatrix_AmbiguousFieldFails(t *testing.T) {
 	}
 	if !diagnostics.HasError(diags) {
 		t.Fatalf("expected an error diagnostic identifying the ambiguity, got %+v", diags)
+	}
+}
+
+// TestTransactionSessionAPI validates specs/003-transactions-session-identity's
+// generated public surface: sessions expose Transaction, generated queries
+// route through one executor abstraction, and the exported association errors
+// remain stable.
+func TestTransactionSessionAPI(t *testing.T) {
+	resp, diags := generate.Generate(userRelationsRequest(t))
+	if resp == nil {
+		t.Fatalf("generation failed: %v", diags)
+	}
+
+	session := generatedFile(t, resp.Files, "content/session_gen.go")
+	for _, want := range []string{
+		"type richmodelExecutor interface",
+		"type sessionIdentity struct{}",
+		"identity    *sessionIdentity",
+		"func (s *Session) Transaction(ctx context.Context, fn func(*Session) error) error",
+		"tx, err := s.pool.Begin(ctx)",
+		"defer func() {",
+		"_ = tx.Rollback(ctx)",
+		"tx.Commit(ctx)",
+		"ErrSessionMismatch = errors.New(\"richmodel: related model belongs to a different session\")",
+		"ErrUnsavedRelated = errors.New(\"richmodel: related model has no persisted identifier\")",
+	} {
+		if !strings.Contains(session, want) {
+			t.Fatalf("expected generated session to contain %q:\n%s", want, session)
+		}
+	}
+
+	store := generatedFile(t, resp.Files, "content/user_store_gen.go")
+	if !strings.Contains(store, "executor richmodelExecutor") || strings.Contains(store, "pool *pgxpool.Pool") {
+		t.Fatalf("expected generated store to use richmodelExecutor instead of *pgxpool.Pool:\n%s", store)
 	}
 }
 
@@ -122,6 +157,17 @@ func assertGolden(t *testing.T, name string, req *pb.GenerateRequest) {
 			t.Errorf("golden fixture file %s was not produced by generation (run with -update to refresh)", path)
 		}
 	}
+}
+
+func generatedFile(t *testing.T, files []*pb.File, name string) string {
+	t.Helper()
+	for _, f := range files {
+		if f.Name == name {
+			return string(f.Contents)
+		}
+	}
+	t.Fatalf("generated file %s not found; got %v", name, fileNames(files))
+	return ""
 }
 
 // TestUserBasicReturningRequired validates the quickstart's negative case:

@@ -16,6 +16,26 @@ func TestUserRelations(t *testing.T) {
 	assertGolden(t, "user-relations", userRelationsRequest(t))
 }
 
+func TestUserRelations_AssociationUsesSessionIdentity(t *testing.T) {
+	resp, diags := generate.Generate(userRelationsRequest(t))
+	if resp == nil {
+		t.Fatalf("generation failed: %v", diags)
+	}
+
+	for _, path := range []string{
+		"content/post_author_relation_gen.go",
+		"content/post_tags_relation_gen.go",
+	} {
+		src := generatedFile(t, resp.Files, path)
+		if !strings.Contains(src, "!sameSessionIdentity(") {
+			t.Fatalf("expected %s to compare private session identity:\n%s", path, src)
+		}
+		if strings.Contains(src, "session != ") {
+			t.Fatalf("expected %s not to compare Session pointer equality:\n%s", path, src)
+		}
+	}
+}
+
 // TestUserRelations_InvalidInverseFails validates FR-004/FR-011: an
 // inverse relation name that doesn't exist on the target model fails
 // generation with a diagnostic, producing zero files (FR-017).

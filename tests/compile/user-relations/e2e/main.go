@@ -7,10 +7,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/macoaure/sqlc-gen-richmodel/tests/compile/user-relations/content"
@@ -36,6 +39,64 @@ func main() {
 	defer pool.Close()
 
 	sess := content.New(pool)
+
+	var committedUserID, rolledBackUserID, panicUserID pgtype.UUID
+	if err := sess.Transaction(ctx, func(tx *content.Session) error {
+		txUser := tx.Users.New().SetName("Committed Tx User")
+		if err := txUser.Save(ctx); err != nil {
+			return err
+		}
+		committedUserID = txUser.ID()
+
+		txPost := tx.Posts.New().SetTitle("Committed Tx Post")
+		if err := txPost.Author().Associate(txUser); err != nil {
+			return err
+		}
+		return txPost.Save(ctx)
+	}); err != nil {
+		log.Fatalf("transaction commit: %v", err)
+	}
+	committedUser, err := sess.Users.Find(ctx, committedUserID)
+	if err != nil {
+		log.Fatalf("find committed transaction user: %v", err)
+	}
+	must(committedUser.Name() == "Committed Tx User", "committed transaction user should be visible")
+
+	abortErr := errors.New("abort transaction")
+	err = sess.Transaction(ctx, func(tx *content.Session) error {
+		txUser := tx.Users.New().SetName("Rolled Back Tx User")
+		if err := txUser.Save(ctx); err != nil {
+			return err
+		}
+		rolledBackUserID = txUser.ID()
+		return abortErr
+	})
+	if !errors.Is(err, abortErr) {
+		log.Fatalf("expected callback error from transaction, got %v", err)
+	}
+	if _, err := sess.Users.Find(ctx, rolledBackUserID); !errors.Is(err, pgx.ErrNoRows) {
+		log.Fatalf("expected rolled-back user to be invisible, got %v", err)
+	}
+
+	func() {
+		defer func() {
+			if r := recover(); r == nil {
+				log.Fatal("expected transaction callback panic to propagate")
+			}
+		}()
+		_ = sess.Transaction(ctx, func(tx *content.Session) error {
+			txUser := tx.Users.New().SetName("Panicked Tx User")
+			if err := txUser.Save(ctx); err != nil {
+				return err
+			}
+			panicUserID = txUser.ID()
+			panic("abort transaction")
+		})
+	}()
+	if _, err := sess.Users.Find(ctx, panicUserID); !errors.Is(err, pgx.ErrNoRows) {
+		log.Fatalf("expected panic transaction user to be invisible, got %v", err)
+	}
+	fmt.Println("transactions verified")
 
 	user := sess.Users.New().SetName("Marcos Aurelio")
 	if err := user.Save(ctx); err != nil {
@@ -128,6 +189,22 @@ func main() {
 	unsavedUser := sess.Users.New().SetName("Not Saved")
 	if err := post2.Author().Associate(unsavedUser); err != content.ErrUnsavedRelated {
 		log.Fatalf("expected ErrUnsavedRelated associating an unsaved model, got %v", err)
+	}
+	if err := sess.Transaction(ctx, func(tx *content.Session) error {
+		txPost := tx.Posts.New().SetTitle("Wrong Session Author")
+		if err := txPost.Author().Associate(user); err != content.ErrSessionMismatch {
+			return fmt.Errorf("expected ErrSessionMismatch associating root user inside transaction, got %w", err)
+		}
+		txUser := tx.Users.New().SetName("Transaction Author")
+		if err := txUser.Save(ctx); err != nil {
+			return err
+		}
+		if err := txPost.Author().Associate(txUser); err != nil {
+			return err
+		}
+		return txPost.Save(ctx)
+	}); err != nil {
+		log.Fatalf("transaction session identity checks: %v", err)
 	}
 	fmt.Println("session-mismatch / unsaved-related rejection verified")
 
