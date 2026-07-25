@@ -33,7 +33,7 @@ func (r PostAuthorRelation) isScoped() bool {
 func (r PostAuthorRelation) exec(ctx context.Context) (*User, error) {
 	sqlText := "SELECT id, name FROM users WHERE id = $1;"
 
-	row := r.parent.coll.session.pool.QueryRow(ctx, sqlText, r.parent.current.UserID)
+	row := r.parent.coll.session.executor.QueryRow(ctx, sqlText, r.parent.current.UserID)
 	var rec userRecord
 	if err := row.Scan(&rec.ID, &rec.Name); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -116,7 +116,7 @@ func (r PostAuthorRelation) Associate(target *User) error {
 	if target.IsNew() {
 		return ErrUnsavedRelated
 	}
-	if r.parent.coll == nil || target.coll == nil || r.parent.coll.session != target.coll.session {
+	if r.parent.coll == nil || target.coll == nil || !sameSessionIdentity(r.parent.coll.session, target.coll.session) {
 		return ErrSessionMismatch
 	}
 	r.parent.current.UserID = target.current.ID

@@ -5,7 +5,6 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // WidgetCollection constructs and finds Widget instances, attached to
@@ -15,8 +14,8 @@ type WidgetCollection struct {
 	store   *widgetStore
 }
 
-func newWidgetCollection(sess *Session, pool *pgxpool.Pool) *WidgetCollection {
-	return &WidgetCollection{session: sess, store: newWidgetStore(pool)}
+func newWidgetCollection(sess *Session) *WidgetCollection {
+	return &WidgetCollection{session: sess, store: newWidgetStore(sess.executor)}
 }
 
 // New constructs a new, unpersisted Widget attached to this collection.

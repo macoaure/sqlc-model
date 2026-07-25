@@ -5,7 +5,6 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // UserCollection constructs and finds User instances, attached to
@@ -15,8 +14,8 @@ type UserCollection struct {
 	store   *userStore
 }
 
-func newUserCollection(sess *Session, pool *pgxpool.Pool) *UserCollection {
-	return &UserCollection{session: sess, store: newUserStore(pool)}
+func newUserCollection(sess *Session) *UserCollection {
+	return &UserCollection{session: sess, store: newUserStore(sess.executor)}
 }
 
 // New constructs a new, unpersisted User attached to this collection.

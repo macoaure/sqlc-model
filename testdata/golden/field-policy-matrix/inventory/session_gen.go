@@ -2,24 +2,81 @@
 package inventory
 
 import (
+	"context"
 	"errors"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+type richmodelExecutor interface {
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
+type sessionIdentity struct{}
 
 // Session owns the database connection pool and one collection per
 // configured model in this context.
 type Session struct {
-	pool    *pgxpool.Pool
-	Widgets *WidgetCollection
+	pool     *pgxpool.Pool
+	executor richmodelExecutor
+	identity *sessionIdentity
+	Widgets  *WidgetCollection
 }
 
 // New creates a Session backed by pool, with every context model's
 // collection attached.
 func New(pool *pgxpool.Pool) *Session {
-	s := &Session{pool: pool}
-	s.Widgets = newWidgetCollection(s, pool)
+	s := &Session{pool: pool, executor: pool, identity: &sessionIdentity{}}
+	s.initCollections()
 	return s
+}
+
+func (s *Session) initCollections() {
+	s.Widgets = newWidgetCollection(s)
+}
+
+// Transaction runs fn inside one database transaction. fn receives a fresh
+// transaction-scoped session; returning nil commits, returning an error
+// rolls back and returns that error, and panicking rolls back before the
+// panic continues.
+func (s *Session) Transaction(ctx context.Context, fn func(*Session) error) error {
+	if s.pool == nil {
+		return ErrTransactionUnavailable
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	txSession := &Session{executor: tx, identity: &sessionIdentity{}}
+	txSession.initCollections()
+
+	closed := false
+	defer func() {
+		if !closed {
+			_ = tx.Rollback(ctx)
+		}
+	}()
+
+	if err := fn(txSession); err != nil {
+		_ = tx.Rollback(ctx)
+		closed = true
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		closed = true
+		return err
+	}
+	closed = true
+	return nil
+}
+
+func sameSessionIdentity(a, b *Session) bool {
+	return a != nil && b != nil && a.identity == b.identity
 }
 
 // modelState is a generated model's lifecycle state (contracts/
@@ -45,4 +102,7 @@ var (
 	// ErrOperationNotConfigured is returned by Save/Delete/Refresh when the
 	// underlying lifecycle operation they need has no configured query.
 	ErrOperationNotConfigured = errors.New("richmodel: operation has no configured query")
+	// ErrTransactionUnavailable is returned when Transaction is called on a
+	// session that cannot open a new database transaction.
+	ErrTransactionUnavailable = errors.New("richmodel: transaction is unavailable on this session")
 )

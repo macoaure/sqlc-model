@@ -3,8 +3,6 @@ package inventory
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // widgetStore executes Widget's configured sqlc queries directly via
@@ -13,16 +11,16 @@ import (
 // query.Text verbatim as its query constant) — the query itself remains
 // sqlc's statically-verified output; this adapter only executes it.
 type widgetStore struct {
-	pool *pgxpool.Pool
+	executor richmodelExecutor
 }
 
-func newWidgetStore(pool *pgxpool.Pool) *widgetStore {
-	return &widgetStore{pool: pool}
+func newWidgetStore(executor richmodelExecutor) *widgetStore {
+	return &widgetStore{executor: executor}
 }
 
 func (s *widgetStore) find(ctx context.Context, rec widgetRecord) (widgetRecord, error) {
 	var out widgetRecord
-	row := s.pool.QueryRow(ctx, "SELECT id, version_no, readonly_field, fillable_field, mutable_field, fillable_and_mutable, generated_insert_field, generated_save_field, sensitive_field, actual_column_name, immutable_field FROM widgets WHERE id = $1;", rec.ID)
+	row := s.executor.QueryRow(ctx, "SELECT id, version_no, readonly_field, fillable_field, mutable_field, fillable_and_mutable, generated_insert_field, generated_save_field, sensitive_field, actual_column_name, immutable_field FROM widgets WHERE id = $1;", rec.ID)
 	if err := row.Scan(&out.ID, &out.VersionNo, &out.ReadonlyField, &out.FillableField, &out.MutableField, &out.FillableAndMutable, &out.GeneratedInsertField, &out.GeneratedSaveField, &out.SensitiveField, &out.ExplicitMapped, &out.ImmutableField); err != nil {
 		return widgetRecord{}, err
 	}
@@ -31,7 +29,7 @@ func (s *widgetStore) find(ctx context.Context, rec widgetRecord) (widgetRecord,
 
 func (s *widgetStore) insert(ctx context.Context, rec widgetRecord) (widgetRecord, error) {
 	var out widgetRecord
-	row := s.pool.QueryRow(ctx, "INSERT INTO widgets (fillable_field, mutable_field, fillable_and_mutable, actual_column_name, immutable_field) VALUES ($1, $2, $3, $4, $5) RETURNING id, version_no, readonly_field, fillable_field, mutable_field, fillable_and_mutable, generated_insert_field, generated_save_field, sensitive_field, actual_column_name, immutable_field;", rec.FillableField, rec.MutableField, rec.FillableAndMutable, rec.ExplicitMapped, rec.ImmutableField)
+	row := s.executor.QueryRow(ctx, "INSERT INTO widgets (fillable_field, mutable_field, fillable_and_mutable, actual_column_name, immutable_field) VALUES ($1, $2, $3, $4, $5) RETURNING id, version_no, readonly_field, fillable_field, mutable_field, fillable_and_mutable, generated_insert_field, generated_save_field, sensitive_field, actual_column_name, immutable_field;", rec.FillableField, rec.MutableField, rec.FillableAndMutable, rec.ExplicitMapped, rec.ImmutableField)
 	if err := row.Scan(&out.ID, &out.VersionNo, &out.ReadonlyField, &out.FillableField, &out.MutableField, &out.FillableAndMutable, &out.GeneratedInsertField, &out.GeneratedSaveField, &out.SensitiveField, &out.ExplicitMapped, &out.ImmutableField); err != nil {
 		return widgetRecord{}, err
 	}
@@ -40,7 +38,7 @@ func (s *widgetStore) insert(ctx context.Context, rec widgetRecord) (widgetRecor
 
 func (s *widgetStore) update(ctx context.Context, rec widgetRecord) (widgetRecord, error) {
 	var out widgetRecord
-	row := s.pool.QueryRow(ctx, "UPDATE widgets SET fillable_field = $1, mutable_field = $2, fillable_and_mutable = $3, actual_column_name = $4, immutable_field = $5 WHERE id = $6 RETURNING id, version_no, readonly_field, fillable_field, mutable_field, fillable_and_mutable, generated_insert_field, generated_save_field, sensitive_field, actual_column_name, immutable_field;", rec.FillableField, rec.MutableField, rec.FillableAndMutable, rec.ExplicitMapped, rec.ImmutableField, rec.ID)
+	row := s.executor.QueryRow(ctx, "UPDATE widgets SET fillable_field = $1, mutable_field = $2, fillable_and_mutable = $3, actual_column_name = $4, immutable_field = $5 WHERE id = $6 RETURNING id, version_no, readonly_field, fillable_field, mutable_field, fillable_and_mutable, generated_insert_field, generated_save_field, sensitive_field, actual_column_name, immutable_field;", rec.FillableField, rec.MutableField, rec.FillableAndMutable, rec.ExplicitMapped, rec.ImmutableField, rec.ID)
 	if err := row.Scan(&out.ID, &out.VersionNo, &out.ReadonlyField, &out.FillableField, &out.MutableField, &out.FillableAndMutable, &out.GeneratedInsertField, &out.GeneratedSaveField, &out.SensitiveField, &out.ExplicitMapped, &out.ImmutableField); err != nil {
 		return widgetRecord{}, err
 	}
@@ -48,7 +46,7 @@ func (s *widgetStore) update(ctx context.Context, rec widgetRecord) (widgetRecor
 }
 
 func (s *widgetStore) delete(ctx context.Context, rec widgetRecord) (int64, error) {
-	tag, err := s.pool.Exec(ctx, "DELETE FROM widgets WHERE id = $1;", rec.ID)
+	tag, err := s.executor.Exec(ctx, "DELETE FROM widgets WHERE id = $1;", rec.ID)
 	if err != nil {
 		return 0, err
 	}
@@ -57,7 +55,7 @@ func (s *widgetStore) delete(ctx context.Context, rec widgetRecord) (int64, erro
 
 func (s *widgetStore) refresh(ctx context.Context, rec widgetRecord) (widgetRecord, error) {
 	var out widgetRecord
-	row := s.pool.QueryRow(ctx, "SELECT id, version_no, readonly_field, fillable_field, mutable_field, fillable_and_mutable, generated_insert_field, generated_save_field, sensitive_field, actual_column_name, immutable_field FROM widgets WHERE id = $1;", rec.ID)
+	row := s.executor.QueryRow(ctx, "SELECT id, version_no, readonly_field, fillable_field, mutable_field, fillable_and_mutable, generated_insert_field, generated_save_field, sensitive_field, actual_column_name, immutable_field FROM widgets WHERE id = $1;", rec.ID)
 	if err := row.Scan(&out.ID, &out.VersionNo, &out.ReadonlyField, &out.FillableField, &out.MutableField, &out.FillableAndMutable, &out.GeneratedInsertField, &out.GeneratedSaveField, &out.SensitiveField, &out.ExplicitMapped, &out.ImmutableField); err != nil {
 		return widgetRecord{}, err
 	}

@@ -5,7 +5,6 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // PostCollection constructs and finds Post instances, attached to
@@ -15,8 +14,8 @@ type PostCollection struct {
 	store   *postStore
 }
 
-func newPostCollection(sess *Session, pool *pgxpool.Pool) *PostCollection {
-	return &PostCollection{session: sess, store: newPostStore(pool)}
+func newPostCollection(sess *Session) *PostCollection {
+	return &PostCollection{session: sess, store: newPostStore(sess.executor)}
 }
 
 // New constructs a new, unpersisted Post attached to this collection.
