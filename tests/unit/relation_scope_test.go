@@ -1,6 +1,7 @@
 package unit
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/macoaure/sqlc-gen-richmodel/internal/generate"
@@ -88,6 +89,22 @@ func TestRelation_ScopeUnknownParameterFails(t *testing.T) {
 		"scopes": {"Published": {"parameter": "nonexistent", "value": true}}
 	}`)
 	assertRelationError(t, req)
+}
+
+func TestRelation_ScopeDiagnosticIncludesRelation(t *testing.T) {
+	req := scopeRequest(t, `{
+		"kind": "has_many", "model": "Child", "local_key": "id", "foreign_key": "parent_id",
+		"lazy_query": "ListChildrenByParent",
+		"parameters": {"parent_id": {"source": "parent.id"}, "published": {"source": "scope.Published", "default": true}},
+		"scopes": {"Published": {"parameter": "nonexistent", "value": true}}
+	}`)
+	_, diags := generate.Generate(req)
+	for _, d := range diags {
+		if d.Relation == "Children" && strings.Contains(d.Path, ".scopes.Published") {
+			return
+		}
+	}
+	t.Fatalf("expected scope diagnostic to include relation, got %+v", diags)
 }
 
 func TestRelation_ScopeNameCollisionFails(t *testing.T) {

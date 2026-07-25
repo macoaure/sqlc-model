@@ -18,19 +18,19 @@ func TestSeverity_String(t *testing.T) {
 
 func TestSort(t *testing.T) {
 	diags := []diagnostics.Diagnostic{
-		{Path: "b", Context: "z", Model: "z", Query: "z"},
-		{Path: "a", Context: "z", Model: "z", Query: "b"},
-		{Path: "a", Context: "z", Model: "z", Query: "a"},
-		{Path: "a", Context: "y", Model: "z", Query: "z"},
-		{Path: "a", Context: "z", Model: "y", Query: "z"},
+		{Path: "b", Context: "z", Model: "z", Relation: "z", Query: "z"},
+		{Path: "a", Context: "z", Model: "z", Relation: "b", Query: "z"},
+		{Path: "a", Context: "z", Model: "z", Relation: "a", Query: "z"},
+		{Path: "a", Context: "y", Model: "z", Relation: "z", Query: "z"},
+		{Path: "a", Context: "z", Model: "y", Relation: "z", Query: "z"},
 	}
 
 	sorted := diagnostics.Sort(diags)
 
-	want := []string{"a:y:z:z", "a:z:y:z", "a:z:z:a", "a:z:z:b", "b:z:z:z"}
+	want := []string{"a:y:z:z:z", "a:z:y:z:z", "a:z:z:a:z", "a:z:z:b:z", "b:z:z:z:z"}
 	got := make([]string, len(sorted))
 	for i, d := range sorted {
-		got[i] = strings.Join([]string{d.Path, d.Context, d.Model, d.Query}, ":")
+		got[i] = strings.Join([]string{d.Path, d.Context, d.Model, d.Relation, d.Query}, ":")
 	}
 	for i := range want {
 		if got[i] != want[i] {

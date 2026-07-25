@@ -121,6 +121,17 @@ func TestRelation_LazyQueryWrongCommandFails(t *testing.T) {
 	assertRelationError(t, req)
 }
 
+func TestRelation_DiagnosticIncludesRelationAndQuery(t *testing.T) {
+	req := relRequest(t, `{"kind": "has_many", "model": "Child", "local_key": "id", "foreign_key": "parent_id", "lazy_query": "GetChild"}`, nil)
+	_, diags := generate.Generate(req)
+	for _, d := range diags {
+		if d.Relation == "Children" && d.Query == "GetChild" {
+			return
+		}
+	}
+	t.Fatalf("expected relation diagnostic to include relation and query, got %+v", diags)
+}
+
 func TestRelation_LazyQueryUnresolvedFails(t *testing.T) {
 	req := relRequest(t, `{"kind": "has_many", "model": "Child", "local_key": "id", "foreign_key": "parent_id", "lazy_query": "NoSuchQuery"}`, nil)
 	assertRelationError(t, req)

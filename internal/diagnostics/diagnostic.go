@@ -46,6 +46,9 @@ func Sort(diags []Diagnostic) []Diagnostic {
 		if a.Model != b.Model {
 			return a.Model < b.Model
 		}
+		if a.Relation != b.Relation {
+			return a.Relation < b.Relation
+		}
 		return a.Query < b.Query
 	})
 	return diags

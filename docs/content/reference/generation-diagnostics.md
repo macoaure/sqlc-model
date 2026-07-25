@@ -46,4 +46,4 @@ Any error-severity diagnostic prevents all output. Warnings may be emitted for d
 
 ## Determinism
 
-Diagnostics are sorted by configuration path and stable identifiers so repeated runs produce identical output.
+Diagnostics are sorted by configuration path and stable identifiers: path, context, model, relation, then query. Repeated runs over unchanged input produce identical output.
