@@ -74,6 +74,14 @@ func (u *User) IsDirty(fields ...UserField) bool {
 // IsClean is the inverse of IsDirty.
 func (u *User) IsClean(fields ...UserField) bool { return !u.IsDirty(fields...) }
 
+// HasChanges reports whether any current field differs from its baseline.
+func (u *User) HasChanges() bool {
+	if u.state == modelStateDeleted {
+		return false
+	}
+	return u.IsDirty()
+}
+
 // DirtyFields returns every dirty field, in declared field order.
 func (u *User) DirtyFields() []UserField {
 	var out []UserField
@@ -144,6 +152,9 @@ func (u *User) clearFieldError(f UserField) *User {
 // Exists reports whether User has ever been persisted.
 func (u *User) Exists() bool { return u.state != modelStateNew }
 
+// IsPersisted reports whether User currently has a persisted backing row.
+func (u *User) IsPersisted() bool { return u.state == modelStatePersisted }
+
 // IsNew reports whether User has never been persisted.
 func (u *User) IsNew() bool { return u.state == modelStateNew }
 
@@ -153,15 +164,25 @@ func (u *User) IsDeleted() bool { return u.state == modelStateDeleted }
 // IsAttached reports whether User is attached to an owning session.
 func (u *User) IsAttached() bool { return u.coll != nil }
 
+// IsDetached reports whether User has no owning session.
+func (u *User) IsDetached() bool { return !u.IsAttached() }
+
+// Detach returns a copy of User without an owning session.
+func (u *User) Detach() *User {
+	v := *u
+	v.coll = nil
+	return &v
+}
+
 // Save validates first; inserts if new, does nothing if persisted and
-// clean, updates if persisted and dirty. Returns ErrDeletedModel or
-// ErrDetachedModel if User is deleted or not attached.
+// clean, updates if persisted and dirty. Returns ErrModelDeleted or
+// ErrModelDetached if User is deleted or not attached.
 func (u *User) Save(ctx context.Context) error {
 	if u.state == modelStateDeleted {
-		return ErrDeletedModel
+		return ErrModelDeleted
 	}
 	if !u.IsAttached() {
-		return ErrDetachedModel
+		return ErrModelDetached
 	}
 	if err := u.Validate(); err != nil {
 		return err
@@ -183,26 +204,32 @@ func (u *User) Save(ctx context.Context) error {
 }
 
 // Delete deletes User; idempotent if already deleted. Returns
-// ErrDetachedModel if User is not attached.
+// ErrModelDetached if User is not attached.
 func (u *User) Delete(ctx context.Context) error {
 	if u.state == modelStateDeleted {
 		return nil
 	}
 	if !u.IsAttached() {
-		return ErrDetachedModel
+		return ErrModelDetached
+	}
+	if u.state == modelStateNew {
+		return ErrModelNotPersisted
 	}
 	return ErrOperationNotConfigured
 }
 
 // Refresh re-hydrates User from the database and re-synchronizes its
-// original snapshot. Returns ErrDeletedModel or ErrDetachedModel if
+// original snapshot. Returns ErrModelDeleted or ErrModelDetached if
 // User is deleted or not attached.
 func (u *User) Refresh(ctx context.Context) error {
 	if u.state == modelStateDeleted {
-		return ErrDeletedModel
+		return ErrModelDeleted
 	}
 	if !u.IsAttached() {
-		return ErrDetachedModel
+		return ErrModelDetached
+	}
+	if u.state == modelStateNew {
+		return ErrModelNotPersisted
 	}
 	return ErrOperationNotConfigured
 }

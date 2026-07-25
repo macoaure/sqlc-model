@@ -47,6 +47,9 @@ func (r {{.BuilderType}}) isScoped() bool {
 }
 
 func (r {{.BuilderType}}) exec(ctx context.Context) ({{.ReturnType}}, error) {
+	if r.parent == nil || r.parent.coll == nil {
+		return nil, ErrModelDetached
+	}
 	sqlText := {{.LazySQL}}
 {{- range .Variants}}
 	if r.variantQuery == "{{.Name}}" {
@@ -109,6 +112,9 @@ row := r.parent.coll.session.executor.QueryRow(ctx, sqlText{{range .LazyArgs}}, 
 // scoped call always performs its own data access and never touches the
 // canonical cache (FR-019).
 func (r {{.BuilderType}}) Get(ctx context.Context) ({{.ReturnType}}, error) {
+	if r.parent == nil || r.parent.coll == nil {
+		return nil, ErrModelDetached
+	}
 	if !r.isScoped() {
 		if r.parent.{{.LoadedField}} {
 			return r.parent.{{.CacheField}}, nil

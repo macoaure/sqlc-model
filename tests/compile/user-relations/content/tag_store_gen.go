@@ -3,6 +3,9 @@ package content
 
 import (
 	"context"
+	"errors"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // tagStore executes Tag's configured sqlc queries directly via
@@ -22,6 +25,9 @@ func (s *tagStore) find(ctx context.Context, rec tagRecord) (tagRecord, error) {
 	var out tagRecord
 	row := s.executor.QueryRow(ctx, "SELECT id, name FROM tags WHERE id = $1;", rec.ID)
 	if err := row.Scan(&out.ID, &out.Name); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return tagRecord{}, ErrNotFound
+		}
 		return tagRecord{}, err
 	}
 	return out, nil
@@ -31,6 +37,9 @@ func (s *tagStore) insert(ctx context.Context, rec tagRecord) (tagRecord, error)
 	var out tagRecord
 	row := s.executor.QueryRow(ctx, "INSERT INTO tags (name) VALUES ($1) RETURNING id, name;", rec.Name)
 	if err := row.Scan(&out.ID, &out.Name); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return tagRecord{}, ErrNotFound
+		}
 		return tagRecord{}, err
 	}
 	return out, nil

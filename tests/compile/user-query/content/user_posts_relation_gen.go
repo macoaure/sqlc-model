@@ -28,6 +28,9 @@ func (r UserPostsRelation) isScoped() bool {
 }
 
 func (r UserPostsRelation) exec(ctx context.Context) ([]*Post, error) {
+	if r.parent == nil || r.parent.coll == nil {
+		return nil, ErrModelDetached
+	}
 	sqlText := "SELECT id, user_id, title FROM posts WHERE user_id = $1 AND (published = $2 OR $2 IS NULL);"
 
 	rows, err := r.parent.coll.session.executor.Query(ctx, sqlText, r.parent.current.ID, relationScopeArg(r.scopeValues, "published", nil))
@@ -58,6 +61,9 @@ func (r UserPostsRelation) exec(ctx context.Context) ([]*Post, error) {
 // scoped call always performs its own data access and never touches the
 // canonical cache (FR-019).
 func (r UserPostsRelation) Get(ctx context.Context) ([]*Post, error) {
+	if r.parent == nil || r.parent.coll == nil {
+		return nil, ErrModelDetached
+	}
 	if !r.isScoped() {
 		if r.parent.postsLoaded {
 			return r.parent.postsCache, nil

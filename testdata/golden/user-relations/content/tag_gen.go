@@ -72,6 +72,14 @@ func (u *Tag) IsDirty(fields ...TagField) bool {
 // IsClean is the inverse of IsDirty.
 func (u *Tag) IsClean(fields ...TagField) bool { return !u.IsDirty(fields...) }
 
+// HasChanges reports whether any current field differs from its baseline.
+func (u *Tag) HasChanges() bool {
+	if u.state == modelStateDeleted {
+		return false
+	}
+	return u.IsDirty()
+}
+
 // DirtyFields returns every dirty field, in declared field order.
 func (u *Tag) DirtyFields() []TagField {
 	var out []TagField
@@ -142,6 +150,9 @@ func (u *Tag) clearFieldError(f TagField) *Tag {
 // Exists reports whether Tag has ever been persisted.
 func (u *Tag) Exists() bool { return u.state != modelStateNew }
 
+// IsPersisted reports whether Tag currently has a persisted backing row.
+func (u *Tag) IsPersisted() bool { return u.state == modelStatePersisted }
+
 // IsNew reports whether Tag has never been persisted.
 func (u *Tag) IsNew() bool { return u.state == modelStateNew }
 
@@ -151,15 +162,25 @@ func (u *Tag) IsDeleted() bool { return u.state == modelStateDeleted }
 // IsAttached reports whether Tag is attached to an owning session.
 func (u *Tag) IsAttached() bool { return u.coll != nil }
 
+// IsDetached reports whether Tag has no owning session.
+func (u *Tag) IsDetached() bool { return !u.IsAttached() }
+
+// Detach returns a copy of Tag without an owning session.
+func (u *Tag) Detach() *Tag {
+	v := *u
+	v.coll = nil
+	return &v
+}
+
 // Save validates first; inserts if new, does nothing if persisted and
-// clean, updates if persisted and dirty. Returns ErrDeletedModel or
-// ErrDetachedModel if Tag is deleted or not attached.
+// clean, updates if persisted and dirty. Returns ErrModelDeleted or
+// ErrModelDetached if Tag is deleted or not attached.
 func (u *Tag) Save(ctx context.Context) error {
 	if u.state == modelStateDeleted {
-		return ErrDeletedModel
+		return ErrModelDeleted
 	}
 	if !u.IsAttached() {
-		return ErrDetachedModel
+		return ErrModelDetached
 	}
 	if err := u.Validate(); err != nil {
 		return err
@@ -181,26 +202,32 @@ func (u *Tag) Save(ctx context.Context) error {
 }
 
 // Delete deletes Tag; idempotent if already deleted. Returns
-// ErrDetachedModel if Tag is not attached.
+// ErrModelDetached if Tag is not attached.
 func (u *Tag) Delete(ctx context.Context) error {
 	if u.state == modelStateDeleted {
 		return nil
 	}
 	if !u.IsAttached() {
-		return ErrDetachedModel
+		return ErrModelDetached
+	}
+	if u.state == modelStateNew {
+		return ErrModelNotPersisted
 	}
 	return ErrOperationNotConfigured
 }
 
 // Refresh re-hydrates Tag from the database and re-synchronizes its
-// original snapshot. Returns ErrDeletedModel or ErrDetachedModel if
+// original snapshot. Returns ErrModelDeleted or ErrModelDetached if
 // Tag is deleted or not attached.
 func (u *Tag) Refresh(ctx context.Context) error {
 	if u.state == modelStateDeleted {
-		return ErrDeletedModel
+		return ErrModelDeleted
 	}
 	if !u.IsAttached() {
-		return ErrDetachedModel
+		return ErrModelDetached
+	}
+	if u.state == modelStateNew {
+		return ErrModelNotPersisted
 	}
 	return ErrOperationNotConfigured
 }

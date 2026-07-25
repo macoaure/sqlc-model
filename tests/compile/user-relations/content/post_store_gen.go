@@ -3,6 +3,9 @@ package content
 
 import (
 	"context"
+	"errors"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // postStore executes Post's configured sqlc queries directly via
@@ -22,6 +25,9 @@ func (s *postStore) find(ctx context.Context, rec postRecord) (postRecord, error
 	var out postRecord
 	row := s.executor.QueryRow(ctx, "SELECT id, user_id, title FROM posts WHERE id = $1;", rec.ID)
 	if err := row.Scan(&out.ID, &out.UserID, &out.Title); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return postRecord{}, ErrNotFound
+		}
 		return postRecord{}, err
 	}
 	return out, nil
@@ -31,6 +37,9 @@ func (s *postStore) insert(ctx context.Context, rec postRecord) (postRecord, err
 	var out postRecord
 	row := s.executor.QueryRow(ctx, "INSERT INTO posts (user_id, title) VALUES ($1, $2) RETURNING id, user_id, title;", rec.UserID, rec.Title)
 	if err := row.Scan(&out.ID, &out.UserID, &out.Title); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return postRecord{}, ErrNotFound
+		}
 		return postRecord{}, err
 	}
 	return out, nil

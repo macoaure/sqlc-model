@@ -99,6 +99,14 @@ func (u *{{.Row}}) IsDirty(fields ...{{.Row}}Field) bool {
 // IsClean is the inverse of IsDirty.
 func (u *{{.Row}}) IsClean(fields ...{{.Row}}Field) bool { return !u.IsDirty(fields...) }
 
+// HasChanges reports whether any current field differs from its baseline.
+func (u *{{.Row}}) HasChanges() bool {
+	if u.state == modelStateDeleted {
+		return false
+	}
+	return u.IsDirty()
+}
+
 // DirtyFields returns every dirty field, in declared field order.
 func (u *{{.Row}}) DirtyFields() []{{.Row}}Field {
 	var out []{{.Row}}Field
@@ -169,6 +177,9 @@ func (u *{{.Row}}) clearFieldError(f {{.Row}}Field) *{{.Row}} {
 // Exists reports whether {{.Row}} has ever been persisted.
 func (u *{{.Row}}) Exists() bool { return u.state != modelStateNew }
 
+// IsPersisted reports whether {{.Row}} currently has a persisted backing row.
+func (u *{{.Row}}) IsPersisted() bool { return u.state == modelStatePersisted }
+
 // IsNew reports whether {{.Row}} has never been persisted.
 func (u *{{.Row}}) IsNew() bool { return u.state == modelStateNew }
 
@@ -178,15 +189,25 @@ func (u *{{.Row}}) IsDeleted() bool { return u.state == modelStateDeleted }
 // IsAttached reports whether {{.Row}} is attached to an owning session.
 func (u *{{.Row}}) IsAttached() bool { return u.coll != nil }
 
+// IsDetached reports whether {{.Row}} has no owning session.
+func (u *{{.Row}}) IsDetached() bool { return !u.IsAttached() }
+
+// Detach returns a copy of {{.Row}} without an owning session.
+func (u *{{.Row}}) Detach() *{{.Row}} {
+	v := *u
+	v.coll = nil
+	return &v
+}
+
 // Save validates first; inserts if new, does nothing if persisted and
-// clean, updates if persisted and dirty. Returns ErrDeletedModel or
-// ErrDetachedModel if {{.Row}} is deleted or not attached.
+// clean, updates if persisted and dirty. Returns ErrModelDeleted or
+// ErrModelDetached if {{.Row}} is deleted or not attached.
 func (u *{{.Row}}) Save(ctx context.Context) error {
 	if u.state == modelStateDeleted {
-		return ErrDeletedModel
+		return ErrModelDeleted
 	}
 	if !u.IsAttached() {
-		return ErrDetachedModel
+		return ErrModelDetached
 	}
 	if err := u.Validate(); err != nil {
 		return err
@@ -217,18 +238,22 @@ func (u *{{.Row}}) Save(ctx context.Context) error {
 }
 
 // Delete deletes {{.Row}}; idempotent if already deleted. Returns
-// ErrDetachedModel if {{.Row}} is not attached.
+// ErrModelDetached if {{.Row}} is not attached.
 func (u *{{.Row}}) Delete(ctx context.Context) error {
 	if u.state == modelStateDeleted {
 		return nil
 	}
 	if !u.IsAttached() {
-		return ErrDetachedModel
+		return ErrModelDetached
+	}
+	if u.state == modelStateNew {
+		return ErrModelNotPersisted
 	}
 {{- if .HasDelete}}
 	if _, err := u.coll.store.delete(ctx, u.current); err != nil {
 		return err
 	}
+	u.original = u.current
 	u.state = modelStateDeleted
 	return nil
 {{- else}}
@@ -237,14 +262,17 @@ func (u *{{.Row}}) Delete(ctx context.Context) error {
 }
 
 // Refresh re-hydrates {{.Row}} from the database and re-synchronizes its
-// original snapshot. Returns ErrDeletedModel or ErrDetachedModel if
+// original snapshot. Returns ErrModelDeleted or ErrModelDetached if
 // {{.Row}} is deleted or not attached.
 func (u *{{.Row}}) Refresh(ctx context.Context) error {
 	if u.state == modelStateDeleted {
-		return ErrDeletedModel
+		return ErrModelDeleted
 	}
 	if !u.IsAttached() {
-		return ErrDetachedModel
+		return ErrModelDetached
+	}
+	if u.state == modelStateNew {
+		return ErrModelNotPersisted
 	}
 {{- if .HasRefresh}}
 	out, err := u.coll.store.refresh(ctx, u.current)

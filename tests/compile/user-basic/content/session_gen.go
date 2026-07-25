@@ -89,13 +89,20 @@ const (
 	modelStateDeleted
 )
 
-// Sentinel errors returned by every generated model's terminal methods.
+// Sentinel lifecycle errors returned by every generated model's terminal methods.
 var (
-	// ErrDeletedModel is returned by Save/Refresh on a deleted model.
-	ErrDeletedModel = errors.New("richmodel: model is deleted")
-	// ErrDetachedModel is returned by Save/Delete/Refresh on a model with
-	// no owning session.
-	ErrDetachedModel = errors.New("richmodel: model is not attached to a session")
+	// ErrModelDeleted is returned by Save/Refresh on a deleted model.
+	ErrModelDeleted = errors.New("richmodel: model is deleted")
+	// ErrModelDetached is returned by Save/Delete/Refresh/lazy-load on a
+	// model with no owning session.
+	ErrModelDetached = errors.New("richmodel: model is not attached to a session")
+	// ErrModelNotPersisted is returned by operations that require a
+	// persisted backing row on a new model.
+	ErrModelNotPersisted = errors.New("richmodel: model is not persisted")
+	// ErrDeletedModel is kept for compatibility; use ErrModelDeleted.
+	ErrDeletedModel = ErrModelDeleted
+	// ErrDetachedModel is kept for compatibility; use ErrModelDetached.
+	ErrDetachedModel = ErrModelDetached
 	// ErrImmutableField is recorded as a field-level error when a setter
 	// for an immutable_after_insert field is called on a persisted model.
 	ErrImmutableField = errors.New("richmodel: field is immutable after insert")
@@ -105,4 +112,6 @@ var (
 	// ErrTransactionUnavailable is returned when Transaction is called on a
 	// session that cannot open a new database transaction.
 	ErrTransactionUnavailable = errors.New("richmodel: transaction is unavailable on this session")
+	// ErrNotFound is returned by single-record fetches when no row matches.
+	ErrNotFound = errors.New("richmodel: not found")
 )

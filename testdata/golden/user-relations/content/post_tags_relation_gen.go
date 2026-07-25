@@ -30,6 +30,9 @@ func (r PostTagsRelation) isScoped() bool {
 }
 
 func (r PostTagsRelation) exec(ctx context.Context) ([]*Tag, error) {
+	if r.parent == nil || r.parent.coll == nil {
+		return nil, ErrModelDetached
+	}
 	sqlText := "SELECT tags.id, tags.name FROM tags INNER JOIN post_tags ON post_tags.tag_id = tags.id WHERE post_tags.post_id = $1;"
 
 	rows, err := r.parent.coll.session.executor.Query(ctx, sqlText, r.parent.current.ID)
@@ -58,6 +61,9 @@ func (r PostTagsRelation) exec(ctx context.Context) ([]*Tag, error) {
 // scoped call always performs its own data access and never touches the
 // canonical cache (FR-019).
 func (r PostTagsRelation) Get(ctx context.Context) ([]*Tag, error) {
+	if r.parent == nil || r.parent.coll == nil {
+		return nil, ErrModelDetached
+	}
 	if !r.isScoped() {
 		if r.parent.tagsLoaded {
 			return r.parent.tagsCache, nil

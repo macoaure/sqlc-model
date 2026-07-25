@@ -176,6 +176,14 @@ func (u *Widget) IsDirty(fields ...WidgetField) bool {
 // IsClean is the inverse of IsDirty.
 func (u *Widget) IsClean(fields ...WidgetField) bool { return !u.IsDirty(fields...) }
 
+// HasChanges reports whether any current field differs from its baseline.
+func (u *Widget) HasChanges() bool {
+	if u.state == modelStateDeleted {
+		return false
+	}
+	return u.IsDirty()
+}
+
 // DirtyFields returns every dirty field, in declared field order.
 func (u *Widget) DirtyFields() []WidgetField {
 	var out []WidgetField
@@ -246,6 +254,9 @@ func (u *Widget) clearFieldError(f WidgetField) *Widget {
 // Exists reports whether Widget has ever been persisted.
 func (u *Widget) Exists() bool { return u.state != modelStateNew }
 
+// IsPersisted reports whether Widget currently has a persisted backing row.
+func (u *Widget) IsPersisted() bool { return u.state == modelStatePersisted }
+
 // IsNew reports whether Widget has never been persisted.
 func (u *Widget) IsNew() bool { return u.state == modelStateNew }
 
@@ -255,15 +266,25 @@ func (u *Widget) IsDeleted() bool { return u.state == modelStateDeleted }
 // IsAttached reports whether Widget is attached to an owning session.
 func (u *Widget) IsAttached() bool { return u.coll != nil }
 
+// IsDetached reports whether Widget has no owning session.
+func (u *Widget) IsDetached() bool { return !u.IsAttached() }
+
+// Detach returns a copy of Widget without an owning session.
+func (u *Widget) Detach() *Widget {
+	v := *u
+	v.coll = nil
+	return &v
+}
+
 // Save validates first; inserts if new, does nothing if persisted and
-// clean, updates if persisted and dirty. Returns ErrDeletedModel or
-// ErrDetachedModel if Widget is deleted or not attached.
+// clean, updates if persisted and dirty. Returns ErrModelDeleted or
+// ErrModelDetached if Widget is deleted or not attached.
 func (u *Widget) Save(ctx context.Context) error {
 	if u.state == modelStateDeleted {
-		return ErrDeletedModel
+		return ErrModelDeleted
 	}
 	if !u.IsAttached() {
-		return ErrDetachedModel
+		return ErrModelDetached
 	}
 	if err := u.Validate(); err != nil {
 		return err
@@ -290,30 +311,37 @@ func (u *Widget) Save(ctx context.Context) error {
 }
 
 // Delete deletes Widget; idempotent if already deleted. Returns
-// ErrDetachedModel if Widget is not attached.
+// ErrModelDetached if Widget is not attached.
 func (u *Widget) Delete(ctx context.Context) error {
 	if u.state == modelStateDeleted {
 		return nil
 	}
 	if !u.IsAttached() {
-		return ErrDetachedModel
+		return ErrModelDetached
+	}
+	if u.state == modelStateNew {
+		return ErrModelNotPersisted
 	}
 	if _, err := u.coll.store.delete(ctx, u.current); err != nil {
 		return err
 	}
+	u.original = u.current
 	u.state = modelStateDeleted
 	return nil
 }
 
 // Refresh re-hydrates Widget from the database and re-synchronizes its
-// original snapshot. Returns ErrDeletedModel or ErrDetachedModel if
+// original snapshot. Returns ErrModelDeleted or ErrModelDetached if
 // Widget is deleted or not attached.
 func (u *Widget) Refresh(ctx context.Context) error {
 	if u.state == modelStateDeleted {
-		return ErrDeletedModel
+		return ErrModelDeleted
 	}
 	if !u.IsAttached() {
-		return ErrDetachedModel
+		return ErrModelDetached
+	}
+	if u.state == modelStateNew {
+		return ErrModelNotPersisted
 	}
 	out, err := u.coll.store.refresh(ctx, u.current)
 	if err != nil {

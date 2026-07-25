@@ -31,6 +31,9 @@ func (r PostAuthorRelation) isScoped() bool {
 }
 
 func (r PostAuthorRelation) exec(ctx context.Context) (*User, error) {
+	if r.parent == nil || r.parent.coll == nil {
+		return nil, ErrModelDetached
+	}
 	sqlText := "SELECT id, name FROM users WHERE id = $1;"
 
 	row := r.parent.coll.session.executor.QueryRow(ctx, sqlText, r.parent.current.UserID)
@@ -53,6 +56,9 @@ func (r PostAuthorRelation) exec(ctx context.Context) (*User, error) {
 // scoped call always performs its own data access and never touches the
 // canonical cache (FR-019).
 func (r PostAuthorRelation) Get(ctx context.Context) (*User, error) {
+	if r.parent == nil || r.parent.coll == nil {
+		return nil, ErrModelDetached
+	}
 	if !r.isScoped() {
 		if r.parent.authorLoaded {
 			return r.parent.authorCache, nil

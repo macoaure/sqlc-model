@@ -3,6 +3,9 @@ package content
 
 import (
 	"context"
+	"errors"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // userStore executes User's configured sqlc queries directly via
@@ -22,6 +25,9 @@ func (s *userStore) find(ctx context.Context, rec userRecord) (userRecord, error
 	var out userRecord
 	row := s.executor.QueryRow(ctx, "SELECT id, name FROM users WHERE id = $1;", rec.ID)
 	if err := row.Scan(&out.ID, &out.Name); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return userRecord{}, ErrNotFound
+		}
 		return userRecord{}, err
 	}
 	return out, nil
@@ -31,6 +37,9 @@ func (s *userStore) insert(ctx context.Context, rec userRecord) (userRecord, err
 	var out userRecord
 	row := s.executor.QueryRow(ctx, "INSERT INTO users (name) VALUES ($1) RETURNING id, name;", rec.Name)
 	if err := row.Scan(&out.ID, &out.Name); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return userRecord{}, ErrNotFound
+		}
 		return userRecord{}, err
 	}
 	return out, nil

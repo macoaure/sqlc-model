@@ -91,6 +91,14 @@ func (u *Post) IsDirty(fields ...PostField) bool {
 // IsClean is the inverse of IsDirty.
 func (u *Post) IsClean(fields ...PostField) bool { return !u.IsDirty(fields...) }
 
+// HasChanges reports whether any current field differs from its baseline.
+func (u *Post) HasChanges() bool {
+	if u.state == modelStateDeleted {
+		return false
+	}
+	return u.IsDirty()
+}
+
 // DirtyFields returns every dirty field, in declared field order.
 func (u *Post) DirtyFields() []PostField {
 	var out []PostField
@@ -161,6 +169,9 @@ func (u *Post) clearFieldError(f PostField) *Post {
 // Exists reports whether Post has ever been persisted.
 func (u *Post) Exists() bool { return u.state != modelStateNew }
 
+// IsPersisted reports whether Post currently has a persisted backing row.
+func (u *Post) IsPersisted() bool { return u.state == modelStatePersisted }
+
 // IsNew reports whether Post has never been persisted.
 func (u *Post) IsNew() bool { return u.state == modelStateNew }
 
@@ -170,15 +181,25 @@ func (u *Post) IsDeleted() bool { return u.state == modelStateDeleted }
 // IsAttached reports whether Post is attached to an owning session.
 func (u *Post) IsAttached() bool { return u.coll != nil }
 
+// IsDetached reports whether Post has no owning session.
+func (u *Post) IsDetached() bool { return !u.IsAttached() }
+
+// Detach returns a copy of Post without an owning session.
+func (u *Post) Detach() *Post {
+	v := *u
+	v.coll = nil
+	return &v
+}
+
 // Save validates first; inserts if new, does nothing if persisted and
-// clean, updates if persisted and dirty. Returns ErrDeletedModel or
-// ErrDetachedModel if Post is deleted or not attached.
+// clean, updates if persisted and dirty. Returns ErrModelDeleted or
+// ErrModelDetached if Post is deleted or not attached.
 func (u *Post) Save(ctx context.Context) error {
 	if u.state == modelStateDeleted {
-		return ErrDeletedModel
+		return ErrModelDeleted
 	}
 	if !u.IsAttached() {
-		return ErrDetachedModel
+		return ErrModelDetached
 	}
 	if err := u.Validate(); err != nil {
 		return err
@@ -200,26 +221,32 @@ func (u *Post) Save(ctx context.Context) error {
 }
 
 // Delete deletes Post; idempotent if already deleted. Returns
-// ErrDetachedModel if Post is not attached.
+// ErrModelDetached if Post is not attached.
 func (u *Post) Delete(ctx context.Context) error {
 	if u.state == modelStateDeleted {
 		return nil
 	}
 	if !u.IsAttached() {
-		return ErrDetachedModel
+		return ErrModelDetached
+	}
+	if u.state == modelStateNew {
+		return ErrModelNotPersisted
 	}
 	return ErrOperationNotConfigured
 }
 
 // Refresh re-hydrates Post from the database and re-synchronizes its
-// original snapshot. Returns ErrDeletedModel or ErrDetachedModel if
+// original snapshot. Returns ErrModelDeleted or ErrModelDetached if
 // Post is deleted or not attached.
 func (u *Post) Refresh(ctx context.Context) error {
 	if u.state == modelStateDeleted {
-		return ErrDeletedModel
+		return ErrModelDeleted
 	}
 	if !u.IsAttached() {
-		return ErrDetachedModel
+		return ErrModelDetached
+	}
+	if u.state == modelStateNew {
+		return ErrModelNotPersisted
 	}
 	return ErrOperationNotConfigured
 }
