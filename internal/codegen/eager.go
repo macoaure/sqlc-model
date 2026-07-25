@@ -93,7 +93,7 @@ func (c *{{$.CollectionType}}) eagerLoad{{.Name}}(ctx context.Context, parents [
 		byKey[key] = append(byKey[key], parent)
 	}
 
-	rows, err := c.session.pool.Query(ctx, {{.EagerSQL}}, keys)
+	rows, err := c.session.executor.Query(ctx, {{.EagerSQL}}, keys)
 	if err != nil {
 		return err
 	}

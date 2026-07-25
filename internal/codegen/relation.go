@@ -54,7 +54,7 @@ func (r {{.BuilderType}}) exec(ctx context.Context) ({{.ReturnType}}, error) {
 	}
 {{- end}}
 {{if .ToMany}}
-	rows, err := r.parent.coll.session.pool.Query(ctx, sqlText{{range .LazyArgs}}, {{.}}{{end}})
+	rows, err := r.parent.coll.session.executor.Query(ctx, sqlText{{range .LazyArgs}}, {{.}}{{end}})
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (r {{.BuilderType}}) exec(ctx context.Context) ({{.ReturnType}}, error) {
 	}
 	return out, nil
 {{- else}}
-	row := r.parent.coll.session.pool.QueryRow(ctx, sqlText{{range .LazyArgs}}, {{.}}{{end}})
+row := r.parent.coll.session.executor.QueryRow(ctx, sqlText{{range .LazyArgs}}, {{.}}{{end}})
 	var rec {{.TargetRecordType}}
 	if err := row.Scan({{range $i, $f := .LazyScan}}{{if $i}}, {{end}}&rec.{{$f}}{{end}}); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -185,7 +185,7 @@ func (r {{.BuilderType}}) Associate(target *{{.TargetRow}}) error {
 	if target.IsNew() {
 		return ErrUnsavedRelated
 	}
-	if r.parent.coll == nil || target.coll == nil || r.parent.coll.session != target.coll.session {
+	if r.parent.coll == nil || target.coll == nil || !sameSessionIdentity(r.parent.coll.session, target.coll.session) {
 		return ErrSessionMismatch
 	}
 	r.parent.current.{{.LocalKeyGoField}} = target.current.{{.ForeignKeyGoField}}
@@ -215,12 +215,12 @@ func (r {{.BuilderType}}) Attach(ctx context.Context, targets ...*{{.TargetRow}}
 		if t.IsNew() {
 			return ErrUnsavedRelated
 		}
-		if r.parent.coll == nil || t.coll == nil || r.parent.coll.session != t.coll.session {
+		if r.parent.coll == nil || t.coll == nil || !sameSessionIdentity(r.parent.coll.session, t.coll.session) {
 			return ErrSessionMismatch
 		}
 	}
 	for _, t := range targets {
-		if _, err := r.parent.coll.session.pool.Exec(ctx, {{.AttachSQL}}, r.parent.current.{{.LocalKeyGoField}}, t.current.{{.TargetKeyGoField}}); err != nil {
+		if _, err := r.parent.coll.session.executor.Exec(ctx, {{.AttachSQL}}, r.parent.current.{{.LocalKeyGoField}}, t.current.{{.TargetKeyGoField}}); err != nil {
 			return err
 		}
 	}
@@ -232,7 +232,7 @@ func (r {{.BuilderType}}) Attach(ctx context.Context, targets ...*{{.TargetRow}}
 // (FR-008).
 func (r {{.BuilderType}}) Detach(ctx context.Context, targets ...*{{.TargetRow}}) error {
 	for _, t := range targets {
-		if _, err := r.parent.coll.session.pool.Exec(ctx, {{.DetachSQL}}, r.parent.current.{{.LocalKeyGoField}}, t.current.{{.TargetKeyGoField}}); err != nil {
+		if _, err := r.parent.coll.session.executor.Exec(ctx, {{.DetachSQL}}, r.parent.current.{{.LocalKeyGoField}}, t.current.{{.TargetKeyGoField}}); err != nil {
 			return err
 		}
 	}
@@ -250,12 +250,12 @@ func (r {{.BuilderType}}) Sync(ctx context.Context, targets ...*{{.TargetRow}}) 
 		if t.IsNew() {
 			return ErrUnsavedRelated
 		}
-		if r.parent.coll == nil || t.coll == nil || r.parent.coll.session != t.coll.session {
+		if r.parent.coll == nil || t.coll == nil || !sameSessionIdentity(r.parent.coll.session, t.coll.session) {
 			return ErrSessionMismatch
 		}
 	}
 
-	rows, err := r.parent.coll.session.pool.Query(ctx, {{.SyncListSQL}}, r.parent.current.{{.LocalKeyGoField}})
+	rows, err := r.parent.coll.session.executor.Query(ctx, {{.SyncListSQL}}, r.parent.current.{{.LocalKeyGoField}})
 	if err != nil {
 		return err
 	}
@@ -281,14 +281,14 @@ func (r {{.BuilderType}}) Sync(ctx context.Context, targets ...*{{.TargetRow}}) 
 
 	for id := range current {
 		if !desired[id] {
-			if _, err := r.parent.coll.session.pool.Exec(ctx, {{.SyncDetachSQL}}, r.parent.current.{{.LocalKeyGoField}}, id); err != nil {
+			if _, err := r.parent.coll.session.executor.Exec(ctx, {{.SyncDetachSQL}}, r.parent.current.{{.LocalKeyGoField}}, id); err != nil {
 				return err
 			}
 		}
 	}
 	for id := range desired {
 		if !current[id] {
-			if _, err := r.parent.coll.session.pool.Exec(ctx, {{.SyncAttachSQL}}, r.parent.current.{{.LocalKeyGoField}}, id); err != nil {
+			if _, err := r.parent.coll.session.executor.Exec(ctx, {{.SyncAttachSQL}}, r.parent.current.{{.LocalKeyGoField}}, id); err != nil {
 				return err
 			}
 		}

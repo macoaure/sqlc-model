@@ -15,7 +15,6 @@ package {{.Package}}
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 {{- range .Imports}}
 	"{{.}}"
 {{- end}}
@@ -28,8 +27,8 @@ type {{.Row}}Collection struct {
 	store   *{{.StoreType}}
 }
 
-func new{{.Row}}Collection(sess *Session, pool *pgxpool.Pool) *{{.Row}}Collection {
-	return &{{.Row}}Collection{session: sess, store: new{{.Row}}Store(pool)}
+func new{{.Row}}Collection(sess *Session) *{{.Row}}Collection {
+	return &{{.Row}}Collection{session: sess, store: new{{.Row}}Store(sess.executor)}
 }
 
 // New constructs a new, unpersisted {{.Row}} attached to this collection.

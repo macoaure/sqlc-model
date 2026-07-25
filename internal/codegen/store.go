@@ -14,8 +14,6 @@ package {{.Package}}
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // {{.StoreType}} executes {{.Row}}'s configured sqlc queries directly via
@@ -24,23 +22,23 @@ import (
 // query.Text verbatim as its query constant) — the query itself remains
 // sqlc's statically-verified output; this adapter only executes it.
 type {{.StoreType}} struct {
-	pool *pgxpool.Pool
+	executor richmodelExecutor
 }
 
-func new{{.Row}}Store(pool *pgxpool.Pool) *{{.StoreType}} {
-	return &{{.StoreType}}{pool: pool}
+func new{{.Row}}Store(executor richmodelExecutor) *{{.StoreType}} {
+	return &{{.StoreType}}{executor: executor}
 }
 {{range .Operations}}
 func (s *{{$.StoreType}}) {{.Method}}(ctx context.Context, rec {{$.RecordType}}) ({{.ReturnType}}, error) {
 {{- if .ReturnsRow}}
 	var out {{$.RecordType}}
-	row := s.pool.QueryRow(ctx, {{.SQL}}{{range .Args}}, rec.{{.}}{{end}})
+	row := s.executor.QueryRow(ctx, {{.SQL}}{{range .Args}}, rec.{{.}}{{end}})
 	if err := row.Scan({{range $i, $f := .Scan}}{{if $i}}, {{end}}&out.{{$f}}{{end}}); err != nil {
 		return {{$.RecordType}}{}, err
 	}
 	return out, nil
 {{- else}}
-	tag, err := s.pool.Exec(ctx, {{.SQL}}{{range .Args}}, rec.{{.}}{{end}})
+	tag, err := s.executor.Exec(ctx, {{.SQL}}{{range .Args}}, rec.{{.}}{{end}})
 	if err != nil {
 		return 0, err
 	}
