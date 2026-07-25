@@ -88,6 +88,81 @@ func TestRenderModel_SliceField(t *testing.T) {
 	}
 }
 
+func TestRenderModel_ValidateBeforeSave(t *testing.T) {
+	ctx := plan.ResolvedContext{Name: "content", Package: "content", Directory: "content"}
+	m := plan.ResolvedModel{
+		Name: "User",
+		Row:  "User",
+		Fields: []plan.ResolvedField{
+			{
+				ResolvedField: mapping.ResolvedField{
+					Name: "name", GoField: "Name", ColumnName: "name",
+					GoType: mapping.GoType{Expr: "string"}, NotNull: true,
+				},
+				Policy: config.FieldPolicy{Name: "name", Readable: true, Mutable: true},
+			},
+		},
+		Operations: plan.ResolvedOperations{
+			Insert: &plan.ResolvedOperation{Kind: contract.Insert, Query: &pb.Query{Name: "CreateUser", Cmd: ":one"}},
+			Update: &plan.ResolvedOperation{Kind: contract.Update, Query: &pb.Query{Name: "UpdateUser", Cmd: ":one"}},
+		},
+	}
+
+	out, diags := codegen.RenderModel(ctx, m)
+	if diagnostics.HasError(diags) {
+		t.Fatalf("unexpected errors: %+v", diags)
+	}
+	src := string(out)
+	for _, want := range []string{
+		"func (u *User) Validate() error",
+		"interface{ validateUser() error }",
+		"if err := u.Validate(); err != nil {\n\t\treturn err\n\t}",
+	} {
+		if !strings.Contains(src, want) {
+			t.Fatalf("expected generated model to contain %q:\n%s", want, src)
+		}
+	}
+
+	validatePos := strings.Index(src, "if err := u.Validate(); err != nil")
+	insertPos := strings.Index(src, "u.coll.store.insert")
+	updatePos := strings.Index(src, "u.coll.store.update")
+	if validatePos < 0 || insertPos < 0 || updatePos < 0 || validatePos > insertPos || validatePos > updatePos {
+		t.Fatalf("expected Save to validate before insert/update:\n%s", src)
+	}
+}
+
+func TestRenderModel_FieldErrorHelpersReplaceAndClear(t *testing.T) {
+	ctx := plan.ResolvedContext{Name: "content", Package: "content", Directory: "content"}
+	m := plan.ResolvedModel{
+		Name: "User",
+		Row:  "User",
+		Fields: []plan.ResolvedField{
+			{
+				ResolvedField: mapping.ResolvedField{
+					Name: "name", GoField: "Name", ColumnName: "name",
+					GoType: mapping.GoType{Expr: "string"}, NotNull: true,
+				},
+				Policy: config.FieldPolicy{Name: "name", Readable: true, Mutable: true},
+			},
+		},
+	}
+
+	out, diags := codegen.RenderModel(ctx, m)
+	if diagnostics.HasError(diags) {
+		t.Fatalf("unexpected errors: %+v", diags)
+	}
+	src := string(out)
+	for _, want := range []string{
+		"u.errs[f] = err",
+		"delete(u.errs, f)",
+		"u.clearFieldError(UserFieldName)",
+	} {
+		if !strings.Contains(src, want) {
+			t.Fatalf("expected generated model to contain %q:\n%s", want, src)
+		}
+	}
+}
+
 // TestRender_PropagatesCodegenFailure exercises Render's error-aggregation
 // branch: a model with an invalid Go identifier for Row produces generated
 // source that fails to format, so Render must return a nil file list.
