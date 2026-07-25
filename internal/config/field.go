@@ -35,20 +35,36 @@ type FieldPolicy struct {
 	Version              bool
 	// Column and RowField are explicit overrides; empty means "resolve
 	// automatically" (internal/mapping's responsibility).
-	Column   string
-	RowField string
+	Column      string
+	RowField    string
+	ValueObject *ValueObjectMapping
+}
+
+// ValueObjectMapping describes the explicit conversion between a generated
+// model field type and its sqlc-compatible persisted column type.
+type ValueObjectMapping struct {
+	Type        string
+	Constructor string
+	Accessor    string
 }
 
 type fieldPolicyJSON struct {
-	Readable             bool   `json:"readable"`
-	Fillable             bool   `json:"fillable"`
-	Mutable              bool   `json:"mutable"`
-	Generated            string `json:"generated"`
-	ImmutableAfterInsert bool   `json:"immutable_after_insert"`
-	Sensitive            bool   `json:"sensitive"`
-	Version              bool   `json:"version"`
-	Column               string `json:"column"`
-	RowField             string `json:"row_field"`
+	Readable             bool             `json:"readable"`
+	Fillable             bool             `json:"fillable"`
+	Mutable              bool             `json:"mutable"`
+	Generated            string           `json:"generated"`
+	ImmutableAfterInsert bool             `json:"immutable_after_insert"`
+	Sensitive            bool             `json:"sensitive"`
+	Version              bool             `json:"version"`
+	Column               string           `json:"column"`
+	RowField             string           `json:"row_field"`
+	ValueObject          *valueObjectJSON `json:"value_object"`
+}
+
+type valueObjectJSON struct {
+	Type        string `json:"type"`
+	Constructor string `json:"constructor"`
+	Accessor    string `json:"accessor"`
 }
 
 // decodeField decodes and validates one field entry. path identifies this
@@ -76,6 +92,13 @@ func decodeField(name string, raw []byte, path, context, model string) (FieldPol
 		Version:              fj.Version,
 		Column:               fj.Column,
 		RowField:             fj.RowField,
+	}
+	if fj.ValueObject != nil {
+		fp.ValueObject = &ValueObjectMapping{
+			Type:        fj.ValueObject.Type,
+			Constructor: fj.ValueObject.Constructor,
+			Accessor:    fj.ValueObject.Accessor,
+		}
 	}
 
 	var diags []diagnostics.Diagnostic
@@ -146,6 +169,36 @@ func validateFieldPolicy(fp FieldPolicy, path, context, model string) []diagnost
 			Message:  fmt.Sprintf("field %q: immutable_after_insert has no effect on a field that is neither fillable nor mutable", fp.Name),
 			Hint:     "remove immutable_after_insert, or add fillable/mutable if mutation should be allowed before insert",
 		})
+	}
+
+	if fp.ValueObject != nil {
+		if fp.ValueObject.Type == "" {
+			diags = append(diags, diagnostics.Diagnostic{
+				Severity: diagnostics.SeverityError,
+				Path:     path + ".value_object.type",
+				Context:  context,
+				Model:    model,
+				Message:  fmt.Sprintf("field %q: value_object.type is required", fp.Name),
+			})
+		}
+		if fp.ValueObject.Constructor == "" {
+			diags = append(diags, diagnostics.Diagnostic{
+				Severity: diagnostics.SeverityError,
+				Path:     path + ".value_object.constructor",
+				Context:  context,
+				Model:    model,
+				Message:  fmt.Sprintf("field %q: value_object.constructor is required", fp.Name),
+			})
+		}
+		if fp.ValueObject.Accessor == "" {
+			diags = append(diags, diagnostics.Diagnostic{
+				Severity: diagnostics.SeverityError,
+				Path:     path + ".value_object.accessor",
+				Context:  context,
+				Model:    model,
+				Message:  fmt.Sprintf("field %q: value_object.accessor is required", fp.Name),
+			})
+		}
 	}
 
 	return diags

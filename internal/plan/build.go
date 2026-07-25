@@ -185,6 +185,16 @@ func buildModel(ctx config.BoundedContext, m config.ModelConfiguration, queries 
 		resolved, fdiags := mapping.Resolve(fp, insertQuery.GetColumns(), fieldPath, ctx.Name, m.Name)
 		diags = append(diags, fdiags...)
 		rf := ResolvedField{ResolvedField: resolved, Policy: fp}
+		if rf.ValueObject != nil && !rf.NotNull {
+			diags = append(diags, diagnostics.Diagnostic{
+				Severity: diagnostics.SeverityError,
+				Path:     fieldPath + ".value_object",
+				Context:  ctx.Name,
+				Model:    m.Name,
+				Message:  fmt.Sprintf("field %q: value_object does not support nullable columns", fp.Name),
+				Hint:     "remove value_object or make the underlying column non-nullable",
+			})
+		}
 		diags = append(diags, validateGeneratedHydration(rf, rm.Operations, fieldPath, ctx.Name, m.Name)...)
 		rm.Fields = append(rm.Fields, rf)
 	}

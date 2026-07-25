@@ -14,6 +14,9 @@ package {{.Package}}
 
 import (
 	"context"
+{{- if .NeedsFmt}}
+	"fmt"
+{{- end}}
 )
 
 // {{.StoreType}} executes {{.Row}}'s configured sqlc queries directly via
@@ -32,13 +35,27 @@ func new{{.Row}}Store(executor richmodelExecutor) *{{.StoreType}} {
 func (s *{{$.StoreType}}) {{.Method}}(ctx context.Context, rec {{$.RecordType}}) ({{.ReturnType}}, error) {
 {{- if .ReturnsRow}}
 	var out {{$.RecordType}}
-	row := s.executor.QueryRow(ctx, {{.SQL}}{{range .Args}}, rec.{{.}}{{end}})
-	if err := row.Scan({{range $i, $f := .Scan}}{{if $i}}, {{end}}&out.{{$f}}{{end}}); err != nil {
+{{- range .Scan}}
+{{- if .ValueObject}}
+	var {{.ScanVar}} {{.PersistedGoType}}
+{{- end}}
+{{- end}}
+	row := s.executor.QueryRow(ctx, {{.SQL}}{{range .Args}}, {{.}}{{end}})
+	if err := row.Scan({{range $i, $f := .Scan}}{{if $i}}, {{end}}{{.ScanTarget}}{{end}}); err != nil {
 		return {{$.RecordType}}{}, err
 	}
+{{- range .Scan}}
+{{- if .ValueObject}}
+	{{.LocalVar}}, err := {{.Constructor}}({{.ScanVar}})
+	if err != nil {
+		return {{$.RecordType}}{}, fmt.Errorf("{{$.Row}}.{{.GoField}}: %w", err)
+	}
+	out.{{.GoField}} = {{.LocalVar}}
+{{- end}}
+{{- end}}
 	return out, nil
 {{- else}}
-	tag, err := s.executor.Exec(ctx, {{.SQL}}{{range .Args}}, rec.{{.}}{{end}})
+	tag, err := s.executor.Exec(ctx, {{.SQL}}{{range .Args}}, {{.}}{{end}})
 	if err != nil {
 		return 0, err
 	}
@@ -54,7 +71,17 @@ type storeOperationData struct {
 	Args       []string
 	ReturnsRow bool
 	ReturnType string
-	Scan       []string
+	Scan       []storeScanData
+}
+
+type storeScanData struct {
+	GoField         string
+	ScanTarget      string
+	ScanVar         string
+	LocalVar        string
+	PersistedGoType string
+	ValueObject     bool
+	Constructor     string
 }
 
 type storeTemplateData struct {
@@ -63,6 +90,7 @@ type storeTemplateData struct {
 	StoreType  string
 	RecordType string
 	Operations []storeOperationData
+	NeedsFmt   bool
 }
 
 // RenderStore renders <model>_store_gen.go: the adapter that executes m's
@@ -96,10 +124,24 @@ func RenderStore(ctx plan.ResolvedContext, m plan.ResolvedModel) ([]byte, []diag
 			op.ReturnType = "int64"
 		}
 		for _, pb := range sortedParams(ro.Params) {
-			op.Args = append(op.Args, pb.Field.GoField)
+			expr := "rec." + pb.Field.GoField
+			if pb.Field.ValueObject != nil {
+				expr += "." + pb.Field.ValueObject.Accessor + "()"
+			}
+			op.Args = append(op.Args, expr)
 		}
 		for _, f := range ro.Scan {
-			op.Scan = append(op.Scan, f.GoField)
+			scan := storeScanData{GoField: f.GoField, ScanTarget: "&out." + f.GoField}
+			if f.ValueObject != nil {
+				data.NeedsFmt = true
+				scan.ValueObject = true
+				scan.ScanVar = "scan" + f.GoField
+				scan.LocalVar = lowerFirst(f.GoField)
+				scan.PersistedGoType = f.PersistedGoType.Expr
+				scan.Constructor = f.ValueObject.Constructor
+				scan.ScanTarget = "&" + scan.ScanVar
+			}
+			op.Scan = append(op.Scan, scan)
 		}
 		data.Operations = append(data.Operations, op)
 	}

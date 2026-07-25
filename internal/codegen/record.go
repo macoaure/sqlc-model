@@ -18,9 +18,9 @@ import (
 {{- end}}
 )
 {{end}}
-// {{.RecordType}} is the raw persisted shape of {{.Row}}, one field per
-// column returned by its canonical (insert) query, in that query's column
-// order.
+// {{.RecordType}} is {{.Row}}'s generated current/original value shape, one
+// field per column returned by its canonical (insert) query, in that query's
+// column order.
 type {{.RecordType}} struct {
 {{- range .Fields}}
 	{{.GoField}} {{.GoType}}

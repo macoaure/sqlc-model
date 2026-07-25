@@ -14,11 +14,13 @@ import (
 // ResolvedField is a field's mapping to a concrete query result column,
 // fully resolved to real sqlc metadata (data-model.md "ResolvedField").
 type ResolvedField struct {
-	Name       string // the field's declared config key
-	GoField    string // generated Go struct field name, PascalCase(Name)
-	ColumnName string // the resolved query result column's exposed name
-	GoType     GoType
-	NotNull    bool
+	Name            string // the field's declared config key
+	GoField         string // generated Go struct field name, PascalCase(Name)
+	ColumnName      string // the resolved query result column's exposed name
+	GoType          GoType // exposed generated model type
+	PersistedGoType GoType // sqlc-compatible scan/parameter type
+	ValueObject     *config.ValueObjectMapping
+	NotNull         bool
 }
 
 // Resolve determines which of columns a field policy identifies, per
@@ -77,6 +79,10 @@ func Resolve(fp config.FieldPolicy, columns []*pb.Column, path, context, model s
 	case 1:
 		col := candidates[0]
 		gt := ResolveGoType(col)
+		exposed := gt
+		if fp.ValueObject != nil {
+			exposed = GoType{Expr: fp.ValueObject.Type}
+		}
 		var diags []diagnostics.Diagnostic
 		if gt.Unmapped {
 			diags = append(diags, diagnostics.Diagnostic{
@@ -88,11 +94,13 @@ func Resolve(fp config.FieldPolicy, columns []*pb.Column, path, context, model s
 			})
 		}
 		return ResolvedField{
-			Name:       fp.Name,
-			GoField:    PascalCase(fp.Name),
-			ColumnName: col.Name,
-			GoType:     gt,
-			NotNull:    col.NotNull,
+			Name:            fp.Name,
+			GoField:         PascalCase(fp.Name),
+			ColumnName:      col.Name,
+			GoType:          exposed,
+			PersistedGoType: gt,
+			ValueObject:     fp.ValueObject,
+			NotNull:         col.NotNull,
 		}, diags
 	default:
 		return ResolvedField{}, []diagnostics.Diagnostic{{
