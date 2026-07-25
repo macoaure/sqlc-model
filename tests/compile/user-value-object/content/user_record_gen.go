@@ -5,10 +5,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// tagRecord is Tag's generated current/original value shape, one
+// userRecord is User's generated current/original value shape, one
 // field per column returned by its canonical (insert) query, in that query's
 // column order.
-type tagRecord struct {
-	ID   pgtype.UUID
-	Name string
+type userRecord struct {
+	ID    pgtype.UUID
+	Email Email
 }

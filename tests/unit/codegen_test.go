@@ -88,6 +88,86 @@ func TestRenderModel_SliceField(t *testing.T) {
 	}
 }
 
+func TestRenderModel_ValueObjectUsesExposedType(t *testing.T) {
+	ctx := plan.ResolvedContext{Name: "content", Package: "content", Directory: "content"}
+	m := plan.ResolvedModel{
+		Name: "User",
+		Row:  "User",
+		Fields: []plan.ResolvedField{
+			{
+				ResolvedField: mapping.ResolvedField{
+					Name: "email", GoField: "Email", ColumnName: "email",
+					GoType: mapping.GoType{Expr: "Email"}, PersistedGoType: mapping.GoType{Expr: "string"},
+					ValueObject: &config.ValueObjectMapping{Type: "Email", Constructor: "NewEmail", Accessor: "String"},
+					NotNull:     true,
+				},
+				Policy: config.FieldPolicy{Name: "email", Readable: true, Fillable: true, Mutable: true},
+			},
+		},
+	}
+
+	out, diags := codegen.RenderModel(ctx, m)
+	if diagnostics.HasError(diags) {
+		t.Fatalf("unexpected errors: %+v", diags)
+	}
+	src := string(out)
+	for _, want := range []string{
+		"func (u *User) Email() Email",
+		"func (u *User) SetEmail(value Email) *User",
+		"func (u *User) OriginalEmail() Email",
+	} {
+		if !strings.Contains(src, want) {
+			t.Fatalf("expected generated model to contain %q:\n%s", want, src)
+		}
+	}
+}
+
+func TestRenderStore_ValueObjectConvertsAtBoundaries(t *testing.T) {
+	field := &plan.ResolvedField{
+		ResolvedField: mapping.ResolvedField{
+			Name: "email", GoField: "Email", ColumnName: "email",
+			GoType: mapping.GoType{Expr: "Email"}, PersistedGoType: mapping.GoType{Expr: "string"},
+			ValueObject: &config.ValueObjectMapping{Type: "Email", Constructor: "NewEmail", Accessor: "String"},
+			NotNull:     true,
+		},
+		Policy: config.FieldPolicy{Name: "email", Readable: true, Fillable: true, Mutable: true},
+	}
+	ctx := plan.ResolvedContext{Name: "content", Package: "content", Directory: "content"}
+	m := plan.ResolvedModel{
+		Name:   "User",
+		Row:    "User",
+		Fields: []plan.ResolvedField{*field},
+		Operations: plan.ResolvedOperations{
+			Insert: &plan.ResolvedOperation{
+				Kind:  contract.Insert,
+				Query: &pb.Query{Name: "CreateUser", Cmd: ":one", Text: "INSERT ..."},
+				Params: []plan.ParamBinding{
+					{Number: 1, Field: field},
+				},
+				Scan: []*plan.ResolvedField{field},
+			},
+		},
+	}
+
+	out, diags := codegen.RenderStore(ctx, m)
+	if diagnostics.HasError(diags) {
+		t.Fatalf("unexpected errors: %+v", diags)
+	}
+	src := string(out)
+	for _, want := range []string{
+		"rec.Email.String()",
+		"var scanEmail string",
+		"&scanEmail",
+		"email, err := NewEmail(scanEmail)",
+		`fmt.Errorf("User.Email: %w", err)`,
+		"out.Email = email",
+	} {
+		if !strings.Contains(src, want) {
+			t.Fatalf("expected generated store to contain %q:\n%s", want, src)
+		}
+	}
+}
+
 func TestRenderModel_ValidateBeforeSave(t *testing.T) {
 	ctx := plan.ResolvedContext{Name: "content", Package: "content", Directory: "content"}
 	m := plan.ResolvedModel{

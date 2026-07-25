@@ -85,6 +85,40 @@ func TestTransactionSessionAPI(t *testing.T) {
 	}
 }
 
+func TestValueObjectFieldMapping(t *testing.T) {
+	resp, diags := generate.Generate(valueObjectRequest())
+	if resp == nil {
+		t.Fatalf("generation failed: %v", diags)
+	}
+	if *update {
+		writeFiles(t, filepath.Join("..", "compile", "user-value-object"), resp.Files)
+		t.Log("updated value-object compile fixture")
+	}
+
+	model := generatedFile(t, resp.Files, "content/user_gen.go")
+	for _, want := range []string{
+		"func (u *User) Email() Email",
+		"func (u *User) SetEmail(value Email) *User",
+		"func (u *User) OriginalEmail() Email",
+	} {
+		if !strings.Contains(model, want) {
+			t.Fatalf("expected generated model to contain %q:\n%s", want, model)
+		}
+	}
+
+	store := generatedFile(t, resp.Files, "content/user_store_gen.go")
+	for _, want := range []string{
+		"rec.Email.String()",
+		"var scanEmail string",
+		"email, err := NewEmail(scanEmail)",
+		`fmt.Errorf("User.Email: %w", err)`,
+	} {
+		if !strings.Contains(store, want) {
+			t.Fatalf("expected generated store to contain %q:\n%s", want, store)
+		}
+	}
+}
+
 // assertGolden is TestUserBasic's comparison logic, generalized so other
 // fixtures (e.g. the field-policy matrix) can reuse it against their own
 // testdata/golden/<name>/ directory.

@@ -237,3 +237,92 @@ func TestBuild_GeneratedSaveWithoutUpdateWarns(t *testing.T) {
 		t.Fatalf("expected generated-save-without-update to be a warning, got %+v", d)
 	}
 }
+
+func TestBuild_ValueObjectFieldKeepsPersistedType(t *testing.T) {
+	req := &pb.GenerateRequest{
+		Queries: []*pb.Query{
+			{
+				Name:    "CreateUser",
+				Cmd:     ":one",
+				Columns: []*pb.Column{mcol("email", "email", "text", true)},
+				Params:  []*pb.Parameter{{Number: 1, Column: mcol("email", "email", "text", true)}},
+			},
+		},
+	}
+	root := &config.RootConfiguration{
+		Version: config.SupportedVersion,
+		Contexts: []config.BoundedContext{
+			{
+				Name:      "content",
+				Package:   "content",
+				Directory: "content",
+				Models: []config.ModelConfiguration{
+					{
+						Name:       "User",
+						Row:        "User",
+						Operations: config.Operations{Insert: "CreateUser"},
+						Fields: []config.FieldPolicy{
+							{
+								Name: "email", Readable: true, Fillable: true,
+								ValueObject: &config.ValueObjectMapping{Type: "Email", Constructor: "NewEmail", Accessor: "String"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	p, diags := plan.Build(root, req, nil)
+	if diagnostics.HasError(diags) {
+		t.Fatalf("unexpected errors: %+v", diags)
+	}
+	field := p.Contexts[0].Models[0].Fields[0]
+	if field.GoType.Expr != "Email" {
+		t.Fatalf("model field type = %s, want Email", field.GoType.Expr)
+	}
+	if field.PersistedGoType.Expr != "string" {
+		t.Fatalf("persisted field type = %s, want string", field.PersistedGoType.Expr)
+	}
+	if field.ValueObject == nil || field.ValueObject.Constructor != "NewEmail" || field.ValueObject.Accessor != "String" {
+		t.Fatalf("unexpected value object metadata: %+v", field.ValueObject)
+	}
+}
+
+func TestBuild_ValueObjectFieldRejectsNullableColumn(t *testing.T) {
+	req := &pb.GenerateRequest{
+		Queries: []*pb.Query{
+			{Name: "CreateUser", Cmd: ":one", Columns: []*pb.Column{mcol("email", "email", "text", false)}},
+		},
+	}
+	root := &config.RootConfiguration{
+		Version: config.SupportedVersion,
+		Contexts: []config.BoundedContext{
+			{
+				Name:      "content",
+				Package:   "content",
+				Directory: "content",
+				Models: []config.ModelConfiguration{
+					{
+						Name:       "User",
+						Row:        "User",
+						Operations: config.Operations{Insert: "CreateUser"},
+						Fields: []config.FieldPolicy{
+							{
+								Name: "email",
+								ValueObject: &config.ValueObjectMapping{
+									Type: "Email", Constructor: "NewEmail", Accessor: "String",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	_, diags := plan.Build(root, req, nil)
+	if findDiag(diags, "value_object does not support nullable columns") == nil {
+		t.Fatalf("expected nullable value_object diagnostic, got %+v", diags)
+	}
+}

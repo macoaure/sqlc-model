@@ -274,6 +274,44 @@ func TestDecode_ImmutableWithoutFillableOrMutableIsWarning(t *testing.T) {
 	}
 }
 
+func TestDecode_ValueObjectField(t *testing.T) {
+	src := `{"version":1,"sqlc":{"package":"p","import":"i","driver":"pgx/v5"},"contexts":[
+		{"name":"a","package":"a","directory":"a","models":{
+			"User":{"row":"User","operations":{"insert":"CreateUser"},"fields":{
+				"email":{"readable":true,"fillable":true,"value_object":{"type":"Email","constructor":"NewEmail","accessor":"String"}}
+			}}
+		}}
+	]}`
+	root, diags := config.Decode([]byte(src))
+	if diagnostics.HasError(diags) {
+		t.Fatalf("unexpected errors: %+v", diags)
+	}
+	vo := root.Contexts[0].Models[0].Fields[0].ValueObject
+	if vo == nil || vo.Type != "Email" || vo.Constructor != "NewEmail" || vo.Accessor != "String" {
+		t.Fatalf("unexpected value object mapping: %+v", vo)
+	}
+}
+
+func TestDecode_ValueObjectRequiresTypeConstructorAndAccessor(t *testing.T) {
+	src := `{"version":1,"sqlc":{"package":"p","import":"i","driver":"pgx/v5"},"contexts":[
+		{"name":"a","package":"a","directory":"a","models":{
+			"User":{"row":"User","operations":{"insert":"CreateUser"},"fields":{
+				"email":{"value_object":{}}
+			}}
+		}}
+	]}`
+	_, diags := config.Decode([]byte(src))
+	for _, path := range []string{
+		"contexts.a.models.User.fields.email.value_object.type",
+		"contexts.a.models.User.fields.email.value_object.constructor",
+		"contexts.a.models.User.fields.email.value_object.accessor",
+	} {
+		if !hasErrorPath(diags, path) {
+			t.Fatalf("expected error at %s, got %+v", path, diags)
+		}
+	}
+}
+
 func TestDecode_UnknownFieldRejected(t *testing.T) {
 	src := `{"version":1,"sqlc":{"package":"p","import":"i","driver":"pgx/v5"},"contexts":[],"bogus":true}`
 	root, diags := config.Decode([]byte(src))

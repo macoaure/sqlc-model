@@ -5,9 +5,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// widgetRecord is the raw persisted shape of Widget, one field per
-// column returned by its canonical (insert) query, in that query's column
-// order.
+// widgetRecord is Widget's generated current/original value shape, one
+// field per column returned by its canonical (insert) query, in that query's
+// column order.
 type widgetRecord struct {
 	ID                   pgtype.UUID
 	VersionNo            int32

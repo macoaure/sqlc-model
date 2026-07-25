@@ -5,9 +5,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// postRecord is the raw persisted shape of Post, one field per
-// column returned by its canonical (insert) query, in that query's column
-// order.
+// postRecord is Post's generated current/original value shape, one
+// field per column returned by its canonical (insert) query, in that query's
+// column order.
 type postRecord struct {
 	ID     pgtype.UUID
 	UserID pgtype.UUID
