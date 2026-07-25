@@ -26,6 +26,7 @@ type ModelConfiguration struct {
 	Row        string
 	Operations Operations
 	Fields     []FieldPolicy
+	Relations  []RelationConfiguration
 }
 
 type operationsJSON struct {
@@ -40,6 +41,7 @@ type modelConfigJSON struct {
 	Row        string         `json:"row"`
 	Operations operationsJSON `json:"operations"`
 	Fields     OrderedObject  `json:"fields"`
+	Relations  OrderedObject  `json:"relations"`
 }
 
 // decodeModel decodes and validates one model entry. contextPath is the
@@ -112,6 +114,27 @@ func decodeModel(name string, raw []byte, contextPath, contextName string) (Mode
 	}
 
 	diags = append(diags, validateModelFields(mc, path, contextName)...)
+
+	seenRelations := make(map[string]bool, len(mj.Relations))
+	for _, entry := range mj.Relations {
+		if seenRelations[entry.Key] {
+			diags = append(diags, diagnostics.Diagnostic{
+				Severity: diagnostics.SeverityError,
+				Path:     fmt.Sprintf("%s.relations.%s", path, entry.Key),
+				Context:  contextName,
+				Model:    name,
+				Relation: entry.Key,
+				Message:  fmt.Sprintf("model %q: duplicate relation %q", name, entry.Key),
+			})
+			continue
+		}
+		seenRelations[entry.Key] = true
+
+		relPath := fmt.Sprintf("%s.relations.%s", path, entry.Key)
+		rc, rdiags := decodeRelation(entry.Key, entry.Value, relPath, contextName, name)
+		diags = append(diags, rdiags...)
+		mc.Relations = append(mc.Relations, rc)
+	}
 
 	return mc, diags
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/macoaure/sqlc-gen-richmodel/internal/config"
 	"github.com/macoaure/sqlc-gen-richmodel/internal/diagnostics"
 	"github.com/macoaure/sqlc-gen-richmodel/internal/plan"
 )
@@ -33,6 +34,10 @@ type {{.Row}} struct {
 	errs map[{{.Row}}Field]error
 	state modelState
 	coll *{{.Row}}Collection
+{{- range .RelationCaches}}
+	{{.CacheField}} {{.CacheType}}
+	{{.LoadedField}} bool
+{{- end}}
 }
 {{$row := .Row}}
 {{range .Fields}}{{if .Readable}}
@@ -269,16 +274,31 @@ type modelFieldData struct {
 	IsSlice     bool
 }
 
+type relationCacheFieldData struct {
+	CacheField  string
+	CacheType   string
+	LoadedField string
+}
+
 type modelTemplateData struct {
-	Package     string
-	Row         string
-	RecordType  string
-	Fields      []modelFieldData
-	HasUpdate   bool
-	HasDelete   bool
-	HasRefresh  bool
-	NeedsSlices bool
-	Imports     []string
+	Package        string
+	Row            string
+	RecordType     string
+	Fields         []modelFieldData
+	HasUpdate      bool
+	HasDelete      bool
+	HasRefresh     bool
+	NeedsSlices    bool
+	Imports        []string
+	RelationCaches []relationCacheFieldData
+}
+
+// relationCacheField derives a relation's cache/loaded field name pair, e.g.
+// "postsCache"/"postsLoaded" for a relation named "Posts" (data-model.md
+// "Relation cache fields on the Generated Model").
+func relationCacheField(relationName string) (cacheField, loadedField string) {
+	base := lowerFirst(relationName)
+	return base + "Cache", base + "Loaded"
 }
 
 // RenderModel renders <model>_gen.go: the full generated model API per
@@ -313,6 +333,19 @@ func RenderModel(ctx plan.ResolvedContext, m plan.ResolvedModel) ([]byte, []diag
 		imports = append(imports, f.GoType.Import)
 	}
 	data.Imports = uniqueSortedImports(imports...)
+
+	for _, rel := range m.Relations {
+		cacheField, loadedField := relationCacheField(rel.Name)
+		cacheType := "*" + rel.Target.Row
+		if rel.Kind == config.HasMany || rel.Kind == config.ManyToMany {
+			cacheType = "[]*" + rel.Target.Row
+		}
+		data.RelationCaches = append(data.RelationCaches, relationCacheFieldData{
+			CacheField:  cacheField,
+			CacheType:   cacheType,
+			LoadedField: loadedField,
+		})
+	}
 
 	filePath := fmt.Sprintf("%s/%s_gen.go", ctx.Directory, fileStem(m.Row))
 	return render(filePath, "model_gen.go", modelTemplate, data, ctx.Name, m.Name)

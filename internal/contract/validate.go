@@ -46,6 +46,9 @@ func ValidateOperation(kind OperationKind, queryName string, queries []*pb.Query
 	if match.Cmd == req.cmd {
 		return match, nil
 	}
+	if req.altCmd != "" && match.Cmd == req.altCmd {
+		return match, nil
+	}
 	if req.fallbackCmd != "" && match.Cmd == req.fallbackCmd {
 		return match, []diagnostics.Diagnostic{{
 			Severity: diagnostics.SeverityWarning,

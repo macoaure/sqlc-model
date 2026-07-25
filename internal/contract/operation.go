@@ -21,6 +21,7 @@ const (
 type requirement struct {
 	cmd         string
 	fallbackCmd string // non-empty: an alternative command allowed with a warning, not an error
+	altCmd      string // non-empty: an alternative command equally acceptable, no warning
 }
 
 var requirements = map[OperationKind]requirement{

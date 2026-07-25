@@ -20,15 +20,47 @@ import (
 // configured model in this context.
 type Session struct {
 	pool *pgxpool.Pool
+{{- if .HasRelations}}
+	lazyLoading LazyLoadingMode
+{{- end}}
 {{- range .Models}}
 	{{.CollectionField}} *{{.Row}}Collection
 {{- end}}
 }
+{{if .HasRelations}}
+// SessionOption configures optional Session behavior at construction time.
+type SessionOption func(*Session)
 
+// LazyLoadingMode controls whether an uncached lazy relation read is
+// allowed, logged, or prevented (FR-020; contracts/relation-api.md).
+type LazyLoadingMode uint8
+
+const (
+	// LazyLoadingAllowed performs uncached lazy reads normally (default).
+	LazyLoadingAllowed LazyLoadingMode = iota
+	// LazyLoadingLogged performs uncached lazy reads but reports them via
+	// the session's configured Logger, if any.
+	LazyLoadingLogged
+	// LazyLoadingPrevented rejects an uncached lazy read with
+	// ErrLazyLoadingPrevented instead of performing it. Reads of an
+	// already-loaded or eager-loaded relation are unaffected.
+	LazyLoadingPrevented
+)
+
+// WithLazyLoading sets mode as the session's lazy-loading policy.
+func WithLazyLoading(mode LazyLoadingMode) SessionOption {
+	return func(s *Session) { s.lazyLoading = mode }
+}
+{{end}}
 // New creates a Session backed by pool, with every context model's
 // collection attached.
-func New(pool *pgxpool.Pool) *Session {
+func New(pool *pgxpool.Pool{{if .HasRelations}}, opts ...SessionOption{{end}}) *Session {
 	s := &Session{pool: pool}
+{{- if .HasRelations}}
+	for _, opt := range opts {
+		opt(s)
+	}
+{{- end}}
 {{- range .Models}}
 	s.{{.CollectionField}} = new{{.Row}}Collection(s, pool)
 {{- end}}
@@ -58,7 +90,40 @@ var (
 	// ErrOperationNotConfigured is returned by Save/Delete/Refresh when the
 	// underlying lifecycle operation they need has no configured query.
 	ErrOperationNotConfigured = errors.New("richmodel: operation has no configured query")
+{{- if .HasRelations}}
+	// ErrSessionMismatch is returned by Associate/Attach/Sync when the
+	// related model belongs to a different session than the parent.
+	ErrSessionMismatch = errors.New("richmodel: related model belongs to a different session")
+	// ErrUnsavedRelated is returned by Associate/Attach/Sync when the
+	// related model has no persisted identifier (IsNew()).
+	ErrUnsavedRelated = errors.New("richmodel: related model has no persisted identifier")
+	// ErrLazyLoadingPrevented is returned by a relation's Get/Reload when
+	// the session's LazyLoadingMode is LazyLoadingPrevented and the
+	// relation is not already cached or eager-loaded.
+	ErrLazyLoadingPrevented = errors.New("richmodel: lazy loading of an uncached relation is prevented")
+{{- end}}
 )
+{{if .HasRelations}}
+// cloneScopeValues copies src so a relation builder's scope methods can
+// chain new values without mutating the receiver or any other builder
+// value already in hand (FR-010).
+func cloneScopeValues(src map[string]any) map[string]any {
+	dst := make(map[string]any, len(src)+1)
+	for k, v := range src {
+		dst[k] = v
+	}
+	return dst
+}
+
+// relationScopeArg resolves a scope-bound query parameter's value: whatever
+// a chained scope set, or def when no scope in the chain set it.
+func relationScopeArg(values map[string]any, key string, def any) any {
+	if v, ok := values[key]; ok {
+		return v
+	}
+	return def
+}
+{{end}}
 `
 
 type sessionModelData struct {
@@ -67,8 +132,9 @@ type sessionModelData struct {
 }
 
 type sessionTemplateData struct {
-	Package string
-	Models  []sessionModelData
+	Package      string
+	Models       []sessionModelData
+	HasRelations bool
 }
 
 // CollectionFieldName is the exported Session field name for a model's
@@ -84,6 +150,9 @@ func RenderSession(ctx plan.ResolvedContext) ([]byte, []diagnostics.Diagnostic) 
 	data := sessionTemplateData{Package: ctx.Package}
 	for _, m := range ctx.Models {
 		data.Models = append(data.Models, sessionModelData{Row: m.Row, CollectionField: CollectionFieldName(m.Row)})
+		if len(m.Relations) > 0 {
+			data.HasRelations = true
+		}
 	}
 	filePath := fmt.Sprintf("%s/session_gen.go", ctx.Directory)
 	return render(filePath, "session_gen.go", sessionTemplate, data, ctx.Name, "")

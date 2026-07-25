@@ -46,6 +46,15 @@ func Render(p *plan.Plan, outputRoot string) ([]*pb.File, []diagnostics.Diagnost
 			modelOut, mdiags := RenderModel(ctx, m)
 			add(fmt.Sprintf("%s/%s_gen.go", ctx.Directory, fileStem(m.Row)), modelOut, mdiags)
 
+			for _, rel := range m.Relations {
+				relOut, reldiags := RenderRelation(ctx, m, rel)
+				add(fmt.Sprintf("%s/%s_%s_relation_gen.go", ctx.Directory, fileStem(m.Row), fileStem(rel.Name)), relOut, reldiags)
+			}
+			if hasEagerRelation(m) {
+				eagerOut, eagerdiags := RenderEager(ctx, m)
+				add(fmt.Sprintf("%s/%s_eager_gen.go", ctx.Directory, fileStem(m.Row)), eagerOut, eagerdiags)
+			}
+
 			if ef, emit := PlanExtensionFile(outputRoot, ctx, m); emit {
 				files[ef.Path] = ef.Contents
 			}

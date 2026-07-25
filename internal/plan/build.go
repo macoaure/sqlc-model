@@ -35,6 +35,7 @@ type ResolvedModel struct {
 	Row        string
 	Operations ResolvedOperations
 	Fields     []ResolvedField
+	Relations  []ResolvedRelation
 }
 
 // ResolvedOperations holds the matched sqlc query for each configured
@@ -103,6 +104,14 @@ func Build(root *config.RootConfiguration, req *pb.GenerateRequest, priorDiags [
 			diags = append(diags, mdiags...)
 			rc.Models = append(rc.Models, rm)
 		}
+		// Relations are resolved in a second pass, after every model in
+		// this context has its fields resolved (research.md "Two-pass
+		// resolution") — a relation's target model may be declared later
+		// than the relation referencing it.
+		for i := range ctx.Models {
+			diags = append(diags, buildRelationsPass2(ctx, ctx.Models[i], &rc.Models[i], &rc, req.GetQueries())...)
+		}
+		buildRelationsPass3(ctx, &rc)
 		diags = append(diags, checkContextCollisions(ctx.Name, rc)...)
 		p.Contexts = append(p.Contexts, rc)
 	}
