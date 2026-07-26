@@ -46,3 +46,5 @@ The first stable release is ready only when all conditions below are satisfied.
 - PostgreSQL integration tests cover generated identifiers, timestamps, constraints, relations, and transactions.
 - Unsupported contracts produce actionable diagnostics.
 - Every public documentation example is compiled in CI.
+- Generated-model checks include golden snapshots, compile fixtures, PostgreSQL integration tests, race-detector coverage, and documentation fixture validation.
+- CI failure output identifies the affected fixture, snapshot, database assertion, race target, or documentation path.

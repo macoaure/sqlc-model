@@ -2,11 +2,31 @@
 
 Use three test levels. None is sufficient alone.
 
+## Commands
+
+```sh
+go test ./tests/golden
+go test ./tests/compile/...
+go test -race ./...
+SQLC_RICHMODEL_TEST_DATABASE_URL='postgres://user:pass@localhost:5432/postgres?sslmode=disable' \
+	go test ./tests/integration/...
+```
+
+The PostgreSQL command is optional locally unless you are changing generated persistence behavior. It must use a disposable database or schema, never production data.
+
 ## Generator golden tests
 
 Feed a fixture `CodeGenRequest` and options to the generator. Compare deterministic output for model structure, collections, adapters, relations, eager loaders, transactions, and diagnostics.
 
 Golden tests prove rendering stability, not compilability.
+
+To accept an intentional output change:
+
+```sh
+go test ./tests/golden -update
+```
+
+Review the snapshot diff before committing it.
 
 ## Compile fixtures
 
