@@ -1,6 +1,8 @@
 site_name: sqlc-model
 site_description: Eloquent-inspired rich models generated over sqlc
 repo_name: sqlc-model
+repo_url: https://github.com/macoaure/sqlc-model
+site_url: https://macoaure.github.io/sqlc-model/
 docs_dir: .
 site_dir: ../site
 
