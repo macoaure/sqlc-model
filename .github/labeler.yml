@@ -1,0 +1,33 @@
+github-actions:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - docs/**
+          - README.md
+          - CONTRIBUTING.md
+
+generator:
+  - changed-files:
+      - any-glob-to-any-file:
+          - cmd/**
+          - internal/**
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - tests/**
+
+fixtures:
+  - changed-files:
+      - any-glob-to-any-file:
+          - testdata/**
+          - tests/compile/**
+
+specs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - specs/**

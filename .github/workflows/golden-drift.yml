@@ -1,0 +1,28 @@
+name: Golden Drift
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  golden-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Regenerate golden fixtures
+        run: go test ./tests/golden -args -update
+
+      - name: Check generated fixture drift
+        run: git diff --exit-code -- testdata/golden tests/compile

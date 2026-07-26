@@ -1,4 +1,4 @@
-name: Release
+name: Release Tag CI
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - "v[0-9]+.[0-9]+.[0-9]+"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify-tag-order:
@@ -43,7 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go-version: ["1.23", "1.24"]
+        go-version: ["1.25"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -72,21 +72,22 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.25"
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
 
-  release:
+  release-smoke:
     needs: [build-and-test, lint]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
+      - name: Install tagged plugin
+        run: go install github.com/macoaure/sqlc-model/cmd/sqlc-model@${GITHUB_REF_NAME}
+
+      - name: Smoke test installed plugin
+        run: test -x "$(go env GOPATH)/bin/sqlc-model"
