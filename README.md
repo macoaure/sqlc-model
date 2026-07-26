@@ -1,32 +1,37 @@
 # sqlc-model
 
+<!-- Logo intentionally omitted: this repository does not include a project logo yet. -->
+
 [![CI](https://github.com/macoaure/sqlc-model/actions/workflows/ci.yml/badge.svg)](https://github.com/macoaure/sqlc-model/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/github/license/macoaure/sqlc-model)](LICENSE)
+[![MIT License](https://img.shields.io/github/license/macoaure/sqlc-model)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/macoaure/sqlc-model)](https://github.com/macoaure/sqlc-model/releases)
 [![Go Reference](https://pkg.go.dev/badge/github.com/macoaure/sqlc-model.svg)](https://pkg.go.dev/github.com/macoaure/sqlc-model)
 
-`sqlc-model` is an Eloquent-inspired rich model layer generated over [sqlc](https://sqlc.dev). sqlc remains the source of truth for SQL, query signatures, parameter types, and result types; the `sqlc-model` plugin adds mutable model objects, lifecycle state, dirty tracking, relations, validation, and model-oriented persistence APIs on top of it.
+`sqlc-model` is an Eloquent-inspired rich model layer generated over [sqlc](https://sqlc.dev) for Go applications using PostgreSQL and pgx/v5.
 
-The generator does not build dynamic queries at runtime. Every terminal database operation is backed by a named sqlc query.
+sqlc remains the source of truth for SQL, query signatures, parameter types, result types, and driver integration. `sqlc-model` adds generated sessions, collections, mutable model objects, lifecycle state, dirty tracking, validation, relations, eager loading, transactions, and model-oriented persistence APIs.
 
-## Metadata
+The generator is not a dynamic ORM. Every terminal database operation resolves to a statically declared sqlc query.
 
-- Repository: <https://github.com/macoaure/sqlc-model>
-- Default branch: `main`
-- Visibility: public
-- Go module: `github.com/macoaure/sqlc-model`
-- Go baseline: `1.25.0`
-- sqlc plugin SDK: `github.com/sqlc-dev/plugin-sdk-go v1.23.0`
+## Features
 
-## Install
+- Generated Active Record-style models over sqlc queries.
+- Session and collection APIs for model construction, lookup, persistence, and transactions.
+- Dirty tracking, original snapshots, lifecycle state, and validation errors.
+- Typed relations with lazy loading, eager loading, scopes, cache inspection, and explicit terminal operations.
+- Value-object field conversion hooks.
+- Deterministic generated files and golden snapshot coverage.
+- PostgreSQL integration tests, compile fixtures, race-detector checks, and documentation example validation.
 
-Install the plugin binary:
+## Installation
 
-```sh
+Install the sqlc process plugin:
+
+```bash
 go install github.com/macoaure/sqlc-model/cmd/sqlc-model@latest
 ```
 
-Add the plugin to `sqlc.yaml` and pass the rich-model options:
+Add the plugin to `sqlc.yaml`:
 
 ```yaml
 plugins:
@@ -54,9 +59,11 @@ sql:
               models: {}
 ```
 
-See the [configuration reference](docs/content/reference/configuration.md) for model, field, relation, query, and lookup options.
+See the [configuration reference](docs/content/reference/configuration.md) for the complete options contract.
 
-## Usage
+## Usage/Examples
+
+Create a session and save a model:
 
 ```go
 models := content.New(pool)
@@ -72,7 +79,7 @@ if err := user.Save(ctx); err != nil {
 }
 ```
 
-Run related model operations atomically with `Transaction`:
+Run related changes atomically:
 
 ```go
 err := models.Transaction(ctx, func(tx *content.Session) error {
@@ -89,21 +96,78 @@ err := models.Transaction(ctx, func(tx *content.Session) error {
 })
 ```
 
-## Documentation
+Load a scoped relation:
 
-- [Tutorials](docs/content/tutorials/index.md): learn the generated model workflow through one path.
-- [How-to guides](docs/content/how-to/index.md): solve focused tasks such as configuring relations or testing generated output.
-- [Reference](docs/content/reference/index.md): look up configuration keys, generated APIs, errors, and compatibility contracts.
-- [Explanation](docs/content/explanation/index.md): understand the design choices and boundaries.
+```go
+posts, err := user.
+    Posts().
+    Published().
+    Latest().
+    Limit(10).
+    Get(ctx)
+```
 
-## Status
+Calling `Posts()` or a scope method does not execute SQL. `Get(ctx)` is the operation boundary that may perform lazy loading.
 
-This project is under active development. The current test strategy covers golden snapshots, compile fixtures, PostgreSQL integration tests, race-detector checks, and documentation fixture validation.
+## API Reference
 
-## Development Checks
+#### Session
 
-```sh
+```go
+func New(pool *pgxpool.Pool, options ...SessionOption) *Session
+```
+
+The generated session owns collections, transaction capability, runtime policies, and model identity.
+
+```go
+func (s *Session) Transaction(ctx context.Context, fn func(*Session) error) error
+```
+
+Returning nil commits. Returning an error rolls back. Panics roll back before continuing.
+
+#### Collection
+
+```go
+func (c *UserCollection) New() *User
+func (c *UserCollection) Find(ctx context.Context, id UserID) (*User, error)
+```
+
+Collections create attached models and expose configured lookup/query operations.
+
+#### Model
+
+```go
+func (u *User) SetName(value string) *User
+func (u *User) IsDirty(fields ...UserField) bool
+func (u *User) Save(ctx context.Context) error
+func (u *User) Delete(ctx context.Context) error
+func (u *User) Refresh(ctx context.Context) error
+```
+
+Models contain current values, original persisted snapshots, lifecycle flags, validation errors, session attachment, and relation caches.
+
+#### Relation
+
+```go
+func (r UserPostsRelation) Get(ctx context.Context) ([]*Post, error)
+func (r UserPostsRelation) Reload(ctx context.Context) ([]*Post, error)
+func (r UserPostsRelation) Cached() ([]*Post, bool)
+func (r UserPostsRelation) Forget() *User
+```
+
+Only the canonical unconstrained relation is cached by default. Scoped results do not overwrite canonical caches.
+
+## Running Tests
+
+Run the normal Go test suite:
+
+```bash
 go test ./...
+```
+
+Run the generator-focused checks:
+
+```bash
 go test -race ./...
 go test ./tests/compile/...
 go test ./tests/golden
@@ -111,17 +175,42 @@ go test ./tests/golden
 
 Run PostgreSQL-backed integration checks with a disposable database:
 
-```sh
+```bash
 SQLC_RICHMODEL_TEST_DATABASE_URL='postgres://user:pass@localhost:5432/postgres?sslmode=disable' \
-	go test ./tests/integration/...
+    go test ./tests/integration/...
 ```
 
-See [docs/content/how-to/test-generated-models.md](docs/content/how-to/test-generated-models.md) for the full test-level guide.
+See [How to test generated models](docs/content/how-to/test-generated-models.md) for the full test-level guide.
 
-## Contributing
+## FAQ
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for how to set up a development environment, run tests, and submit changes.
+#### Is sqlc-model an ORM?
+
+No. It generates model-oriented Go code over named sqlc queries. It does not build dynamic SQL at runtime.
+
+#### Does sqlc still own database access?
+
+Yes. sqlc owns SQL parsing, static analysis, parameter types, result shapes, driver integration, and transaction-bound query objects.
+
+#### When does generated code execute SQL?
+
+Only terminal operations execute SQL. Examples include `Find(ctx)`, `Save(ctx)`, `Delete(ctx)`, `Refresh(ctx)`, relation `Get(ctx)`, and relation `Reload(ctx)`.
+
+#### Where should I start?
+
+Start with [Generate the first rich model](docs/content/tutorials/first-model.md), then read the [configuration reference](docs/content/reference/configuration.md).
+
+## Feedback
+
+Open a [GitHub issue](https://github.com/macoaure/sqlc-model/issues) for bugs, feature requests, and documentation gaps.
+
+## Acknowledgements
+
+- [sqlc](https://sqlc.dev/)
+- [pgx](https://github.com/jackc/pgx)
+- [Diataxis](https://diataxis.fr/)
+- [Laravel Eloquent](https://laravel.com/docs/eloquent)
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+[MIT](LICENSE)
