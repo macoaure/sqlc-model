@@ -30,3 +30,7 @@ Add the smallest test that protects the behavior changed. Use unit tests for loc
 Recent history uses gitmoji plus Conventional Commits, for example `🐛 fix(session): preserva identidade entre sessões` and `📝 docs(readme): atualiza visão geral da biblioteca`. Keep subjects under 72 characters and use a clear scope.
 
 Before opening a PR, run `go build ./...`, `go test ./...`, and `golangci-lint run`. PRs should target `main`, describe the change, link related issues, and note any test coverage or integration setup needed.
+
+## Design Context
+
+The `docs/` site (MkDocs Material) has strategic and visual context captured for AI-assisted design work: `docs/PRODUCT.md` (register, audience, positioning, anti-references) and `docs/DESIGN.md` (color/type/component system — "The Reference Desk"). Read both before making UX or visual changes to the docs site.

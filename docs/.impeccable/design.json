@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-26T00:00:00Z",
+  "title": "Design System: sqlc-model docs",
+  "extensions": {
+    "colorMeta": {
+      "structural-indigo": {
+        "role": "primary",
+        "displayName": "Structural Indigo",
+        "canonical": "oklch(45% 0.19 264)",
+        "tonalRamp": [
+          "oklch(15% 0.10 264)",
+          "oklch(25% 0.13 264)",
+          "oklch(35% 0.16 264)",
+          "oklch(45% 0.19 264)",
+          "oklch(55% 0.17 264)",
+          "oklch(68% 0.13 264)",
+          "oklch(82% 0.07 264)",
+          "oklch(95% 0.02 264)"
+        ]
+      },
+      "signal-teal": {
+        "role": "secondary",
+        "displayName": "Signal Teal",
+        "canonical": "oklch(55% 0.11 195)",
+        "tonalRamp": [
+          "oklch(15% 0.05 195)",
+          "oklch(25% 0.07 195)",
+          "oklch(35% 0.09 195)",
+          "oklch(45% 0.10 195)",
+          "oklch(55% 0.11 195)",
+          "oklch(68% 0.09 195)",
+          "oklch(82% 0.05 195)",
+          "oklch(95% 0.015 195)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "body": { "displayName": "Body", "purpose": "Prose content across tutorials, how-to, reference, and explanation pages." },
+      "label": { "displayName": "Label / Mono", "purpose": "Literal API tokens, config keys, and code — anything meant to be typed exactly as shown." }
+    },
+    "shadows": [
+      { "name": "header-scroll", "value": "Material default (not overridden)", "purpose": "Separates the sticky header from content once the page is scrolled; the only elevation cue in the system." }
+    ]
+  },
+  "components": [],
+  "narrative": {
+    "northStar": "The Reference Desk",
+    "overview": "This site is a technical reference desk, not a showroom. It runs on Material for MkDocs, essentially unmodified beyond a two-color palette choice (indigo primary, teal accent) and the extension set that enables tabs, annotated code blocks, and admonitions. Every structural decision — flat surfaces, a single functional shadow, no custom animation, no instant-loading JS layer — comes from the framework's own restraint, and this project has not fought it. That restraint is deliberate, not incidental: PRODUCT.md's positioning is precision over persuasion, and a documentation shell that adds visual noise on top of Material's defaults would undercut that.",
+    "keyCharacteristics": [
+      "Flat by default; the only shadow in the system is functional (sticky header separation on scroll).",
+      "Two-color palette used structurally (indigo = frame, teal = signal), not decoratively.",
+      "Typography, code samples, and admonitions carry the credibility — no illustration, no hero imagery, no gradient.",
+      "No customization beyond Material for MkDocs' defaults."
+    ],
+    "rules": [
+      { "name": "The Two-Color Rule", "body": "Only indigo and teal carry meaning. A third color anywhere is either a syntax-highlighting token or a mistake — never a new accent introduced for decoration.", "section": "colors" },
+      { "name": "The Literal Token Rule", "body": "Anything that is a real API name, config key, or error identifier renders in Roboto Mono, never in body prose styling.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. The single exception — header separation on scroll — exists purely for orientation, not depth for its own sake.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep indigo structural (nav/headers/links) and teal functional (active/highlight/interactive) — never swap their roles or introduce a third accent.",
+      "Do let code blocks and literal API tokens (Roboto Mono) be the primary visual signal of trustworthiness — precision over decoration.",
+      "Do keep surfaces flat; the sticky-header shadow is the only elevation in the system.",
+      "Do route new content through Diataxis's four types plus Project — don't blend tutorial narrative into reference material or vice versa."
+    ],
+    "donts": [
+      "Don't make this look like a generic ORM marketing site — no hero gradients, no \"blazing fast\" copy, no feature-grid-as-decoration.",
+      "Don't add heavy client-side interactivity or animation typical of some modern doc frameworks — keep it fast and text-first.",
+      "Don't turn the Diataxis section list into an icon-plus-card grid; it's intentionally plain-linked prose.",
+      "Don't use a colored border-left/border-right stripe as a callout accent if admonition styling is ever customized.",
+      "Don't introduce a third named accent color."
+    ]
+  }
+}
