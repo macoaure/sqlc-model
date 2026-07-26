@@ -128,4 +128,5 @@ nav:
       - Definition of done: content/project/definition-of-done.md
       - Risk register: content/project/risk-register.md
   - Glossary: content/glossary.md
+  - Tags: content/tags.md
   - References: content/references.md
