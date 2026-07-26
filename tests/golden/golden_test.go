@@ -148,6 +148,24 @@ func TestQueryCompositionAPI(t *testing.T) {
 	}
 }
 
+func TestGoldenOutputCoversModelCollectionAdapterFiles(t *testing.T) {
+	resp, diags := generate.Generate(userBasicRequest(t))
+	if resp == nil {
+		t.Fatalf("generation failed: %v", diags)
+	}
+	for _, path := range []string{
+		"content/user.go",
+		"content/user_gen.go",
+		"content/user_record_gen.go",
+		"content/user_collection_gen.go",
+		"content/user_store_gen.go",
+		"content/session_gen.go",
+		"content/fields_gen.go",
+	} {
+		generatedFile(t, resp.Files, path)
+	}
+}
+
 // assertGolden is TestUserBasic's comparison logic, generalized so other
 // fixtures (e.g. the field-policy matrix) can reuse it against their own
 // testdata/golden/<name>/ directory.
@@ -212,7 +230,7 @@ func assertGolden(t *testing.T, name string, req *pb.GenerateRequest) {
 			continue
 		}
 		if string(f.Contents) != string(want) {
-			t.Errorf("generated file %s does not match golden fixture (run with -update to refresh)\n--- got ---\n%s", f.Name, f.Contents)
+			t.Errorf("golden fixture %s generated file %s does not match snapshot (run with -update to refresh)\n--- got ---\n%s", name, f.Name, f.Contents)
 		}
 	}
 	for path := range wantPaths {

@@ -42,3 +42,20 @@ func TestLifecycleGeneratedAPISurface(t *testing.T) {
 		}
 	}
 }
+
+func TestGoldenOutputCoversTransactionAndSessionFiles(t *testing.T) {
+	resp, diags := generate.Generate(userRelationsRequest(t))
+	if resp == nil {
+		t.Fatalf("generation failed: %v", diags)
+	}
+	session := generatedFile(t, resp.Files, "content/session_gen.go")
+	for _, want := range []string{
+		"func (s *Session) Transaction(ctx context.Context, fn func(*Session) error) error",
+		"tx.Commit(ctx)",
+		"_ = tx.Rollback(ctx)",
+	} {
+		if !strings.Contains(session, want) {
+			t.Fatalf("expected generated session to contain %q:\n%s", want, session)
+		}
+	}
+}

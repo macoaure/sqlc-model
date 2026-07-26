@@ -16,6 +16,21 @@ func TestUserRelations(t *testing.T) {
 	assertGolden(t, "user-relations", userRelationsRequest(t))
 }
 
+func TestGoldenOutputCoversRelationAndEagerLoaderFiles(t *testing.T) {
+	resp, diags := generate.Generate(userRelationsRequest(t))
+	if resp == nil {
+		t.Fatalf("generation failed: %v", diags)
+	}
+	for _, path := range []string{
+		"content/user_posts_relation_gen.go",
+		"content/post_author_relation_gen.go",
+		"content/post_tags_relation_gen.go",
+		"content/user_eager_gen.go",
+	} {
+		generatedFile(t, resp.Files, path)
+	}
+}
+
 func TestUserRelations_AssociationUsesSessionIdentity(t *testing.T) {
 	resp, diags := generate.Generate(userRelationsRequest(t))
 	if resp == nil {
