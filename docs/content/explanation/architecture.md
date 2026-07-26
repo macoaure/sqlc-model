@@ -20,12 +20,12 @@ PostgreSQL
 
 ## Parallel generation
 
-During `sqlc generate`, sqlc-gen-go and sqlc-gen-richmodel consume representations derived from the same schema and query analysis.
+During `sqlc generate`, sqlc-gen-go and sqlc-model consume representations derived from the same schema and query analysis.
 
 ```text
                            ┌── sqlc-gen-go ─────────→ sqlcdb
 Schema and named queries ──┤
-                           └── sqlc-gen-richmodel ──→ models
+                           └── sqlc-model ──→ models
 ```
 
 The rich-model plugin must not assume sqlc-generated `.go` files already exist during the same invocation. It produces code targeting the expected public contract of the configured sqlc-gen-go output.

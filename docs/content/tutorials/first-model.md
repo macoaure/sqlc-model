@@ -74,7 +74,7 @@ version: "2"
 plugins:
   - name: richmodel
     process:
-      cmd: sqlc-gen-richmodel
+      cmd: sqlc-model
 
 sql:
   - name: application

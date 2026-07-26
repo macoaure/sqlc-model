@@ -1,4 +1,4 @@
-# Contributing to sqlc-gen-richmodel
+# Contributing to sqlc-model
 
 Thanks for considering a contribution! This project is a Go module, and the workflow is standard Go tooling.
 
@@ -8,8 +8,8 @@ Thanks for considering a contribution! This project is a Go module, and the work
 2. Clone your fork and enter the directory:
 
    ```sh
-   git clone https://github.com/<you>/sqlc-gen-richmodel.git
-   cd sqlc-gen-richmodel
+   git clone https://github.com/<you>/sqlc-model.git
+   cd sqlc-model
    ```
 
 3. Download dependencies:

@@ -15,7 +15,6 @@ models:
         lazy_query: GetUser
         eager_query: ListUsersByIDs
         nullable: false
-        cache: canonical
 ```
 
 Generated operations:
@@ -41,7 +40,6 @@ models:
         inverse: Author
         lazy_query: ListPostsByUser
         eager_query: ListPostsByUserIDs
-        cache: canonical
 ```
 
 Generated operations:
@@ -64,8 +62,9 @@ relations:
   Tags:
     kind: many_to_many
     model: Tag
+    local_key: id
+    target_key: id
     lazy_query: ListTagsByPost
-    eager_query: ListTagsByPostIDs
     attach_query: AttachTagToPost
     detach_query: DetachTagFromPost
     sync_queries:
@@ -83,6 +82,8 @@ err := post.Tags().Sync(ctx, tagA, tagC)
 ```
 
 The generator does not invent pivot-table SQL.
+
+Many-to-many eager loading is not generated in this release.
 
 ## Enforce session identity
 

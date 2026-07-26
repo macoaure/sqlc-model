@@ -1,22 +1,22 @@
-# sqlc-gen-richmodel documentation
+# sqlc-model documentation
 
-`sqlc-gen-richmodel` is an Eloquent-inspired rich model layer generated over sqlc. sqlc remains the source of truth for SQL, query signatures, parameter types, result types, and driver integration. The rich-model generator adds mutable model objects, lifecycle state, fluent behavior, relations, validation, dirty tracking, transactions, and model-oriented persistence APIs.
+`sqlc-model` is an Eloquent-inspired rich model layer generated over sqlc. sqlc remains the source of truth for SQL, query signatures, parameter types, result types, and driver integration. The rich-model generator adds mutable model objects, lifecycle state, fluent behavior, relations, validation, dirty tracking, transactions, and model-oriented persistence APIs.
 
-This archive contains the proposed product and implementation documentation organized with the Diátaxis framework.
+This directory contains the product and implementation documentation organised with the Diataxis framework.
 
 ## Documentation areas
 
-- [Tutorials](docs/tutorials/index.md) teach the system through complete, guided examples.
-- [How-to guides](docs/how-to/index.md) solve specific implementation and application tasks.
-- [Reference](docs/reference/index.md) defines exact configuration, API, lifecycle, query, and compatibility contracts.
-- [Explanation](docs/explanation/index.md) records the architectural reasoning and rejected alternatives.
-- [Project implementation](docs/project/index.md) defines the delivery plan, release boundary, and definition of done.
+- [Tutorials](content/tutorials/index.md) teach the system through complete, guided examples.
+- [How-to guides](content/how-to/index.md) solve specific implementation and application tasks.
+- [Reference](content/reference/index.md) defines exact configuration, API, lifecycle, query, and compatibility contracts.
+- [Explanation](content/explanation/index.md) records the architectural reasoning and rejected alternatives.
+- [Project implementation](content/project/index.md) defines the delivery plan, release boundary, and definition of done.
 
-Start with [Documentation index](docs/index.md).
+Start with [Documentation index](content/index.md).
 
 ## Project definition
 
-> `sqlc-gen-richmodel` generates fluent Active Record models, typed relationships, lifecycle state, and persistence adapters over statically declared sqlc queries.
+> `sqlc-model` generates fluent Active Record models, typed relationships, lifecycle state, and persistence adapters over statically declared sqlc queries.
 
 The public abstraction consists of sessions, collections, models, relations, typed scopes, and terminal persistence operations. The persistence foundation consists of explicit SQL, sqlc query analysis, sqlc-generated Go types, and transaction-bound sqlc query objects.
 

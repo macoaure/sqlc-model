@@ -30,7 +30,7 @@ Review the snapshot diff before committing it.
 
 ## Compile fixtures
 
-Run sqlc-gen-go and sqlc-gen-richmodel against the same schema and query set, then compile the result.
+Run sqlc-gen-go and sqlc-model against the same schema and query set, then compile the result.
 
 The fixture matrix must include:
 

@@ -1,6 +1,6 @@
 # Documentation index
 
-This documentation follows Diátaxis. Each section answers a different kind of question and should be maintained according to that purpose.
+This documentation follows Diataxis. Each section answers a different kind of question and should be maintained according to that purpose.
 
 ## Tutorials: learning through completion
 
@@ -20,7 +20,7 @@ See [How-to guides](how-to/index.md).
 
 ## Reference: exact contracts
 
-Reference material is descriptive and normative. It defines configuration keys, generated APIs, lifecycle states, cache behavior, errors, supported query contracts, and compatibility boundaries.
+Reference material is descriptive and normative. It defines configuration keys, generated APIs, lifecycle states, relation cache behaviour, errors, supported query contracts, and compatibility boundaries.
 
 See [Reference](reference/index.md).
 
@@ -32,7 +32,7 @@ See [Explanation](explanation/index.md).
 
 ## Project implementation
 
-The implementation section is project governance rather than a Diátaxis quadrant. It defines phases, acceptance criteria, scope boundaries, risks, and release readiness.
+The implementation section is project governance rather than a Diataxis quadrant. It defines phases, acceptance criteria, scope boundaries, risks, and release readiness.
 
 See [Project implementation](project/index.md).
 

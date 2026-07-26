@@ -100,7 +100,6 @@ Defines direct typed relations. Traversal paths are not configuration entities.
 | `lazy_query` | Single-parent sqlc loader |
 | `eager_query` | Multi-parent sqlc loader |
 | `nullable` | Whether dissociation is legal |
-| `cache` | Initial supported value: `canonical` or `none` |
 | `parameters` | Mapping from relation state to query parameters |
 | `scopes` | Typed scope definitions |
 

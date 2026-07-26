@@ -1,57 +1,59 @@
-site_name: sqlc-gen-richmodel
+site_name: sqlc-model
 site_description: Eloquent-inspired rich models generated over sqlc
-repo_name: sqlc-gen-richmodel
+repo_name: sqlc-model
+docs_dir: .
+site_dir: ../site
 
 theme:
   name: material
 
 nav:
   - Home: README.md
-  - Documentation: docs/index.md
+  - Documentation: content/index.md
   - Tutorials:
-      - Overview: docs/tutorials/index.md
-      - First model: docs/tutorials/first-model.md
-      - First relation: docs/tutorials/first-relation.md
-      - First transaction: docs/tutorials/first-transaction.md
+      - Overview: content/tutorials/index.md
+      - First model: content/tutorials/first-model.md
+      - First relation: content/tutorials/first-relation.md
+      - First transaction: content/tutorials/first-transaction.md
   - How-to guides:
-      - Overview: docs/how-to/index.md
-      - Configure a model: docs/how-to/configure-a-model.md
-      - Add fluent behavior: docs/how-to/add-fluent-behavior.md
-      - Handle validation: docs/how-to/handle-validation.md
-      - Configure relations: docs/how-to/configure-relations.md
-      - Define relation scopes: docs/how-to/define-relation-scopes.md
-      - Eager-load relations: docs/how-to/eager-load-relations.md
-      - Use transactions: docs/how-to/use-transactions.md
-      - Use value objects: docs/how-to/use-value-objects.md
-      - Test generated models: docs/how-to/test-generated-models.md
+      - Overview: content/how-to/index.md
+      - Configure a model: content/how-to/configure-a-model.md
+      - Add fluent behavior: content/how-to/add-fluent-behavior.md
+      - Handle validation: content/how-to/handle-validation.md
+      - Configure relations: content/how-to/configure-relations.md
+      - Define relation scopes: content/how-to/define-relation-scopes.md
+      - Eager-load relations: content/how-to/eager-load-relations.md
+      - Use transactions: content/how-to/use-transactions.md
+      - Use value objects: content/how-to/use-value-objects.md
+      - Test generated models: content/how-to/test-generated-models.md
   - Reference:
-      - Overview: docs/reference/index.md
-      - Configuration: docs/reference/configuration.md
-      - Generated files: docs/reference/generated-files.md
-      - Session API: docs/reference/session-api.md
-      - Model API: docs/reference/model-api.md
-      - Collection API: docs/reference/collection-api.md
-      - Relation API: docs/reference/relation-api.md
-      - Lifecycle: docs/reference/lifecycle.md
-      - Query contracts: docs/reference/query-contracts.md
-      - Errors: docs/reference/errors.md
-      - Compatibility: docs/reference/compatibility.md
-      - Diagnostics: docs/reference/generation-diagnostics.md
+      - Overview: content/reference/index.md
+      - Configuration: content/reference/configuration.md
+      - Generated files: content/reference/generated-files.md
+      - Session API: content/reference/session-api.md
+      - Model API: content/reference/model-api.md
+      - Collection API: content/reference/collection-api.md
+      - Relation API: content/reference/relation-api.md
+      - Lifecycle: content/reference/lifecycle.md
+      - Query contracts: content/reference/query-contracts.md
+      - Errors: content/reference/errors.md
+      - Compatibility: content/reference/compatibility.md
+      - Diagnostics: content/reference/generation-diagnostics.md
   - Explanation:
-      - Overview: docs/explanation/index.md
-      - Architecture: docs/explanation/architecture.md
-      - Active Record over sqlc: docs/explanation/active-record-over-sqlc.md
-      - Package boundaries: docs/explanation/package-boundaries.md
-      - Query composition: docs/explanation/query-composition.md
-      - Lazy and eager loading: docs/explanation/lazy-and-eager-loading.md
-      - Model state: docs/explanation/model-state.md
-      - Transactions and sessions: docs/explanation/transactions-and-sessions.md
-      - Rejected alternatives: docs/explanation/rejected-alternatives.md
+      - Overview: content/explanation/index.md
+      - Architecture: content/explanation/architecture.md
+      - Active Record over sqlc: content/explanation/active-record-over-sqlc.md
+      - Package boundaries: content/explanation/package-boundaries.md
+      - Query composition: content/explanation/query-composition.md
+      - Lazy and eager loading: content/explanation/lazy-and-eager-loading.md
+      - Model state: content/explanation/model-state.md
+      - Transactions and sessions: content/explanation/transactions-and-sessions.md
+      - Rejected alternatives: content/explanation/rejected-alternatives.md
   - Project:
-      - Overview: docs/project/index.md
-      - Roadmap: docs/project/implementation-roadmap.md
-      - Initial release: docs/project/initial-release-boundary.md
-      - Definition of done: docs/project/definition-of-done.md
-      - Risk register: docs/project/risk-register.md
-  - Glossary: docs/glossary.md
-  - References: docs/references.md
+      - Overview: content/project/index.md
+      - Roadmap: content/project/implementation-roadmap.md
+      - Initial release: content/project/initial-release-boundary.md
+      - Definition of done: content/project/definition-of-done.md
+      - Risk register: content/project/risk-register.md
+  - Glossary: content/glossary.md
+  - References: content/references.md

@@ -75,7 +75,6 @@ models:
         inverse: Author
         lazy_query: ListPostsByUser
         eager_query: ListPostsByUserIDs
-        cache: canonical
         parameters:
           user_id:
             source: parent.id
