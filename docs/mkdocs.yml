@@ -8,6 +8,7 @@ site_dir: ../site
 
 theme:
   name: material
+  custom_dir: overrides
   features:
     - content.code.annotate
     - content.code.copy
@@ -77,10 +78,13 @@ extra:
     - icon: fontawesome/brands/github
       link: https://github.com/macoaure/sqlc-model
 
+extra_css:
+  - stylesheets/extra.css
+
 copyright: Copyright &copy; 2026 macoaure
 
 nav:
-  - Home: README.md
+  - Home: index.md
   - Documentation: content/index.md
   - Tutorials:
       - Overview: content/tutorials/index.md

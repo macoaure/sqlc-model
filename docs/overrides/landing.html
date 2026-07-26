@@ -1,0 +1,69 @@
+{#- Landing page template: bypasses the doc shell (tabs strip, sidebar,
+   TOC, prev/next footer) entirely. Used only by pages with
+   `template: landing.html` in front matter — currently just index.md.
+   Content stays in Markdown (page.content) for real Pygments highlighting
+   and a single source of truth; this template supplies structural chrome
+   only (slim header, copyright bar). -#}
+{% extends "base.html" %}
+
+{% block header %}
+  <header class="landing-header" data-md-component="header">
+    <div class="landing-header__inner">
+      <a href="{{ config.extra.homepage | d(nav.homepage.url, true) | url }}" class="landing-header__brand">
+        {{ config.site_name }}
+      </a>
+      <nav class="landing-header__nav" aria-label="Landing">
+        <a href="{{ 'content/index.md' | url }}">Docs</a>
+        {% if config.repo_url %}
+          <a href="{{ config.repo_url }}">GitHub</a>
+        {% endif %}
+        {% if config.theme.palette %}
+          {% if not config.theme.palette is mapping %}
+            {% include "partials/palette.html" %}
+          {% endif %}
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+  {% if config.theme.palette %}
+    {% if not config.theme.palette is mapping %}
+      {% include "partials/javascripts/palette.html" %}
+    {% endif %}
+  {% endif %}
+{% endblock %}
+
+{% block tabs %}{% endblock %}
+
+{% block hero %}
+  <section class="hero-band">
+    <div class="hero-band__inner">
+      <h1>{{ page.meta.hero_title }}</h1>
+      <p>{{ page.meta.hero_tagline | safe }}</p>
+      <div class="hero-band__cta">
+        <a href="{{ 'content/index.md' | url }}" class="hero-cta hero-cta--primary">Read the docs</a>
+        <a href="{{ config.repo_url }}" class="hero-cta hero-cta--secondary">View on GitHub</a>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+
+{% block site_nav %}{% endblock %}
+
+{% block container %}
+  <div class="md-content landing-content" data-md-component="content">
+    <div class="md-typeset">
+      {{ page.content }}
+    </div>
+  </div>
+{% endblock %}
+
+{% block footer %}
+  <footer class="landing-footer">
+    <div class="landing-footer__inner">
+      {% if config.copyright %}
+        <span>{{ config.copyright }}</span>
+      {% endif %}
+      <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">Made with Material for MkDocs</a>
+    </div>
+  </footer>
+{% endblock %}
