@@ -76,6 +76,20 @@ func TestExtensionFile_CreateOnceNeverOverwritten(t *testing.T) {
 	}
 }
 
+func TestCompileMatrixFixturesRegistered(t *testing.T) {
+	for _, dir := range []string{
+		"identifier-styles",
+		"type-matrix",
+		"query-matrix",
+		"config-matrix",
+		"relation-session-matrix",
+	} {
+		if _, err := os.Stat(filepath.Join("..", "compile", dir, "go.mod")); err != nil {
+			t.Fatalf("compile matrix fixture %s is not registered: %v", dir, err)
+		}
+	}
+}
+
 func containsFile(files []*pb.File, name string) bool {
 	for _, f := range files {
 		if f.Name == name {
