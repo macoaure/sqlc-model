@@ -1,11 +1,20 @@
 # sqlc-gen-richmodel
 
-[![CI](https://github.com/macoaure/sqlc-gen-richmodel/actions/workflows/ci.yml/badge.svg)](https://github.com/macoaure/sqlc-gen-richmodel/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/github/license/macoaure/sqlc-gen-richmodel)](LICENSE)
-[![Latest release](https://img.shields.io/github/v/release/macoaure/sqlc-gen-richmodel)](https://github.com/macoaure/sqlc-gen-richmodel/releases)
+[![CI](https://github.com/macoaure/sqlc-model/actions/workflows/ci.yml/badge.svg)](https://github.com/macoaure/sqlc-model/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/macoaure/sqlc-model)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/macoaure/sqlc-model)](https://github.com/macoaure/sqlc-model/releases)
 [![Go Reference](https://pkg.go.dev/badge/github.com/macoaure/sqlc-gen-richmodel.svg)](https://pkg.go.dev/github.com/macoaure/sqlc-gen-richmodel)
 
 `sqlc-gen-richmodel` is an Eloquent-inspired rich model layer generated over [sqlc](https://sqlc.dev). sqlc remains the source of truth for SQL, query signatures, parameter types, and result types; this plugin adds mutable model objects, lifecycle state, dirty tracking, relations, validation, and model-oriented persistence APIs on top of it — no dynamic queries, no ORM magic, just generated code.
+
+## Metadata
+
+- Repository: <https://github.com/macoaure/sqlc-model>
+- Default branch: `main`
+- Visibility: public
+- Go module: `github.com/macoaure/sqlc-gen-richmodel`
+- Go baseline: `1.25.0`
+- sqlc plugin SDK: `github.com/sqlc-dev/plugin-sdk-go v1.23.0`
 
 ## Install
 
@@ -67,7 +76,26 @@ err := models.Transaction(ctx, func(tx *content.Session) error {
 
 ## Status
 
-This project is under active development. See [specs/](specs/) for the specifications driving implementation.
+This project is under active development. The current test strategy covers golden snapshots, compile fixtures, PostgreSQL integration tests, race-detector checks, and documentation fixture validation.
+
+## Development Checks
+
+```sh
+go test ./...
+go test -race ./...
+go test ./tests/compile
+go test ./tests/golden
+go test ./tests/integration
+```
+
+Run PostgreSQL-backed integration checks with a disposable database:
+
+```sh
+SQLC_RICHMODEL_TEST_DATABASE_URL='postgres://user:pass@localhost:5432/postgres?sslmode=disable' \
+	go test ./tests/integration/...
+```
+
+See [docs/content/how-to/test-generated-models.md](docs/content/how-to/test-generated-models.md) for the full test-level guide.
 
 ## Contributing
 
