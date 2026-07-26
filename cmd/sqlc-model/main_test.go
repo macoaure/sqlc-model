@@ -112,7 +112,9 @@ func TestHandle_SuccessWithWarnings(t *testing.T) {
 	defer func() { os.Stderr = origStderr }()
 
 	resp, herr := handle(context.Background(), req)
-	w.Close()
+	if err := w.Close(); err != nil {
+		t.Fatalf("close stderr pipe: %v", err)
+	}
 	captured, _ := io.ReadAll(r)
 
 	if herr != nil {
@@ -162,20 +164,28 @@ func TestMain_FullRoundTrip(t *testing.T) {
 	}()
 
 	go func() {
-		stdinW.Write(reqBytes)
-		stdinW.Close()
+		if _, err := stdinW.Write(reqBytes); err != nil {
+			t.Errorf("write request: %v", err)
+		}
+		if err := stdinW.Close(); err != nil {
+			t.Errorf("close stdin pipe: %v", err)
+		}
 	}()
 
 	var captured bytes.Buffer
 	done := make(chan struct{})
 	go func() {
-		io.Copy(&captured, stdoutR)
+		if _, err := io.Copy(&captured, stdoutR); err != nil {
+			t.Errorf("copy response: %v", err)
+		}
 		close(done)
 	}()
 
 	main()
 
-	stdoutW.Close()
+	if err := stdoutW.Close(); err != nil {
+		t.Fatalf("close stdout pipe: %v", err)
+	}
 	<-done
 
 	var resp pb.GenerateResponse
