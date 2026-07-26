@@ -64,7 +64,7 @@ func TestTransactionSessionAPI(t *testing.T) {
 	session := generatedFile(t, resp.Files, "content/session_gen.go")
 	for _, want := range []string{
 		"type richmodelExecutor interface",
-		"type sessionIdentity struct{}",
+		"type sessionIdentity struct{ _ byte }",
 		"identity    *sessionIdentity",
 		"func (s *Session) Transaction(ctx context.Context, fn func(*Session) error) error",
 		"tx, err := s.pool.Begin(ctx)",

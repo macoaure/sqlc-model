@@ -16,7 +16,7 @@ type richmodelExecutor interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }
 
-type sessionIdentity struct{}
+type sessionIdentity struct{ _ byte }
 
 // Session owns the database connection pool and one collection per
 // configured model in this context.

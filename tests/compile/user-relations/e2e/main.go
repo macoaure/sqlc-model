@@ -12,7 +12,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -74,7 +73,7 @@ func main() {
 	if !errors.Is(err, abortErr) {
 		log.Fatalf("expected callback error from transaction, got %v", err)
 	}
-	if _, err := sess.Users.Find(ctx, rolledBackUserID); !errors.Is(err, pgx.ErrNoRows) {
+	if _, err := sess.Users.Find(ctx, rolledBackUserID); !errors.Is(err, content.ErrNotFound) {
 		log.Fatalf("expected rolled-back user to be invisible, got %v", err)
 	}
 
@@ -93,7 +92,7 @@ func main() {
 			panic("abort transaction")
 		})
 	}()
-	if _, err := sess.Users.Find(ctx, panicUserID); !errors.Is(err, pgx.ErrNoRows) {
+	if _, err := sess.Users.Find(ctx, panicUserID); !errors.Is(err, content.ErrNotFound) {
 		log.Fatalf("expected panic transaction user to be invisible, got %v", err)
 	}
 	fmt.Println("transactions verified")
@@ -173,12 +172,7 @@ func main() {
 	must(err == nil && len(tags) == 0, "Detach should leave zero tags attached")
 
 	// --- session-mismatch / unsaved-related rejection (FR-021) ---
-	otherPool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		log.Fatalf("connecting (second pool): %v", err)
-	}
-	defer otherPool.Close()
-	otherSess := content.New(otherPool)
+	otherSess := content.New(pool)
 	otherUser, err := otherSess.Users.Find(ctx, user.ID())
 	if err != nil {
 		log.Fatalf("Find in other session: %v", err)
