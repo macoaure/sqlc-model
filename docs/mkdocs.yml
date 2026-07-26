@@ -6,6 +6,16 @@ site_url: https://macoaure.github.io/sqlc-model/
 docs_dir: .
 site_dir: ../site
 
+# Bookkeeping/tooling files that live under docs_dir but were never part of
+# the rendered site (none are in nav; SUMMARY.md predates this MkDocs setup
+# and links to README.md, which mkdocs excludes once index.md exists).
+exclude_docs: |
+  README.md
+  MANIFEST.md
+  SUMMARY.md
+  PRODUCT.md
+  DESIGN.md
+
 theme:
   name: material
   custom_dir: overrides
