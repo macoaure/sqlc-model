@@ -5,12 +5,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/macoaure/sqlc-gen-richmodel/internal/plan"
+	"github.com/macoaure/sqlc-model/internal/plan"
 )
 
 const extensionTemplate = `package %s
 
-// %s is created once by sqlc-gen-richmodel and never overwritten. Add
+// %s is created once by sqlc-model and never overwritten. Add
 // handwritten domain methods for %s here — they will survive every future
 // regeneration.
 `

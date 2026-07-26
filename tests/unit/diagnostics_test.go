@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/macoaure/sqlc-gen-richmodel/internal/diagnostics"
+	"github.com/macoaure/sqlc-model/internal/diagnostics"
 )
 
 func TestSeverity_String(t *testing.T) {

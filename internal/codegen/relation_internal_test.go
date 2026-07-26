@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/macoaure/sqlc-gen-richmodel/internal/mapping"
+	"github.com/macoaure/sqlc-model/internal/mapping"
 )
 
 // TestGoLiteral covers goLiteral's branches directly. Some are unreachable

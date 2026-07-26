@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 
-	"github.com/macoaure/sqlc-gen-richmodel/internal/diagnostics"
+	"github.com/macoaure/sqlc-model/internal/diagnostics"
 )
 
 // BoundedContext is a named grouping of related models sharing one Go

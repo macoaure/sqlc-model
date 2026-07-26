@@ -1,4 +1,4 @@
-module github.com/macoaure/sqlc-gen-richmodel/tests/compile/user-value-object
+module github.com/macoaure/sqlc-model/tests/compile/user-value-object
 
 go 1.25.0
 

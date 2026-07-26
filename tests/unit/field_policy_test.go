@@ -3,8 +3,8 @@ package unit
 import (
 	"testing"
 
-	"github.com/macoaure/sqlc-gen-richmodel/internal/config"
-	"github.com/macoaure/sqlc-gen-richmodel/internal/diagnostics"
+	"github.com/macoaure/sqlc-model/internal/config"
+	"github.com/macoaure/sqlc-model/internal/diagnostics"
 )
 
 func decodeOneField(t *testing.T, fieldJSON string) *config.RootConfiguration {

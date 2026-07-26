@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/macoaure/sqlc-gen-richmodel/internal/diagnostics"
-	"github.com/macoaure/sqlc-gen-richmodel/internal/generate"
+	"github.com/macoaure/sqlc-model/internal/diagnostics"
+	"github.com/macoaure/sqlc-model/internal/generate"
 )
 
 func TestGoldenDiagnosticsOutput(t *testing.T) {

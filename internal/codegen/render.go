@@ -6,7 +6,7 @@ import (
 	"go/format"
 	"text/template"
 
-	"github.com/macoaure/sqlc-gen-richmodel/internal/diagnostics"
+	"github.com/macoaure/sqlc-model/internal/diagnostics"
 
 	"golang.org/x/tools/imports"
 )

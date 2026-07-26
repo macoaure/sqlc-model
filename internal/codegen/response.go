@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/macoaure/sqlc-gen-richmodel/internal/diagnostics"
-	"github.com/macoaure/sqlc-gen-richmodel/internal/plan"
+	"github.com/macoaure/sqlc-model/internal/diagnostics"
+	"github.com/macoaure/sqlc-model/internal/plan"
 
 	pb "github.com/sqlc-dev/plugin-sdk-go/plugin"
 )

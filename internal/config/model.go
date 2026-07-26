@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/macoaure/sqlc-gen-richmodel/internal/diagnostics"
+	"github.com/macoaure/sqlc-model/internal/diagnostics"
 )
 
 // Operations maps each lifecycle operation kind to the sqlc query name that

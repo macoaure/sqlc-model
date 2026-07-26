@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/macoaure/sqlc-gen-richmodel/internal/generate"
+	"github.com/macoaure/sqlc-model/internal/generate"
 
 	pb "github.com/sqlc-dev/plugin-sdk-go/plugin"
 )

@@ -3,8 +3,8 @@ package unit
 import (
 	"testing"
 
-	"github.com/macoaure/sqlc-gen-richmodel/internal/contract"
-	"github.com/macoaure/sqlc-gen-richmodel/internal/diagnostics"
+	"github.com/macoaure/sqlc-model/internal/contract"
+	"github.com/macoaure/sqlc-model/internal/diagnostics"
 
 	pb "github.com/sqlc-dev/plugin-sdk-go/plugin"
 )

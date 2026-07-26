@@ -3,7 +3,7 @@ package contract
 import (
 	"fmt"
 
-	"github.com/macoaure/sqlc-gen-richmodel/internal/diagnostics"
+	"github.com/macoaure/sqlc-model/internal/diagnostics"
 
 	pb "github.com/sqlc-dev/plugin-sdk-go/plugin"
 )

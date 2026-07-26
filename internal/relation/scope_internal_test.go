@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/macoaure/sqlc-gen-richmodel/internal/mapping"
+	"github.com/macoaure/sqlc-model/internal/mapping"
 
 	pb "github.com/sqlc-dev/plugin-sdk-go/plugin"
 )

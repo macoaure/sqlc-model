@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/macoaure/sqlc-gen-richmodel/internal/config"
-	"github.com/macoaure/sqlc-gen-richmodel/internal/contract"
-	"github.com/macoaure/sqlc-gen-richmodel/internal/diagnostics"
+	"github.com/macoaure/sqlc-model/internal/config"
+	"github.com/macoaure/sqlc-model/internal/contract"
+	"github.com/macoaure/sqlc-model/internal/diagnostics"
 
 	pb "github.com/sqlc-dev/plugin-sdk-go/plugin"
 )

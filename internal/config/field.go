@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 
-	"github.com/macoaure/sqlc-gen-richmodel/internal/diagnostics"
+	"github.com/macoaure/sqlc-model/internal/diagnostics"
 )
 
 // GeneratedKind describes when a field's value is supplied by the database

@@ -18,7 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/macoaure/sqlc-gen-richmodel/tests/compile/user-integration/content"
+	"github.com/macoaure/sqlc-model/tests/compile/user-integration/content"
 )
 
 func must(cond bool, msg string) {

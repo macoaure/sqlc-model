@@ -1,4 +1,4 @@
-// Command sqlc-gen-richmodel is a sqlc codegen plugin that generates an
+// Command sqlc-model is a sqlc codegen plugin that generates an
 // Eloquent-inspired rich model layer over sqlc-generated queries.
 package main
 
@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/macoaure/sqlc-gen-richmodel/internal/diagnostics"
-	"github.com/macoaure/sqlc-gen-richmodel/internal/generate"
+	"github.com/macoaure/sqlc-model/internal/diagnostics"
+	"github.com/macoaure/sqlc-model/internal/generate"
 
 	"github.com/sqlc-dev/plugin-sdk-go/codegen"
 	pb "github.com/sqlc-dev/plugin-sdk-go/plugin"

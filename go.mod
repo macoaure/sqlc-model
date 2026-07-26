@@ -1,4 +1,4 @@
-module github.com/macoaure/sqlc-gen-richmodel
+module github.com/macoaure/sqlc-model
 
 go 1.25.0
 

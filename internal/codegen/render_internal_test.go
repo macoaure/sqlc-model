@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/macoaure/sqlc-gen-richmodel/internal/diagnostics"
-	"github.com/macoaure/sqlc-gen-richmodel/internal/plan"
+	"github.com/macoaure/sqlc-model/internal/diagnostics"
+	"github.com/macoaure/sqlc-model/internal/plan"
 )
 
 // These exercise render's four failure branches directly: none of them are

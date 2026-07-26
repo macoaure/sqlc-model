@@ -5,8 +5,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/macoaure/sqlc-gen-richmodel/internal/config"
-	"github.com/macoaure/sqlc-gen-richmodel/internal/diagnostics"
+	"github.com/macoaure/sqlc-model/internal/config"
+	"github.com/macoaure/sqlc-model/internal/diagnostics"
 
 	pb "github.com/sqlc-dev/plugin-sdk-go/plugin"
 )

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/macoaure/sqlc-gen-richmodel/internal/config"
+	"github.com/macoaure/sqlc-model/internal/config"
 )
 
 // json.Unmarshal/Decoder only ever hand a json.Unmarshaler syntactically

@@ -3,7 +3,7 @@ package plan
 import (
 	"fmt"
 
-	"github.com/macoaure/sqlc-gen-richmodel/internal/diagnostics"
+	"github.com/macoaure/sqlc-model/internal/diagnostics"
 )
 
 // checkContextCollisions detects two generated declarations within the same

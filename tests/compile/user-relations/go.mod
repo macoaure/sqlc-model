@@ -1,4 +1,4 @@
-module github.com/macoaure/sqlc-gen-richmodel/tests/compile/user-relations
+module github.com/macoaure/sqlc-model/tests/compile/user-relations
 
 go 1.25.0
 
